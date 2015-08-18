@@ -13,12 +13,6 @@ import numpy as np
 
 import nengo
 
-def find_offset(a, b):
-    assert len(a) == len(b)
-    corr = np.correlate(a, b, 'full')
-    index = np.argmax(corr[len(a):])
-    return index
-
 
 class Benchmark(object):
     def __init__(self):
@@ -159,4 +153,3 @@ class Benchmark(object):
             plt.show()
 
         return result
-
