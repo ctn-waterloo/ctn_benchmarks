@@ -105,6 +105,7 @@ class Benchmark(object):
 
         if p.save_figs or p.show_figs:
             plt = matplotlib.pyplot
+            plt.figure()
         else:
             plt = None
         sim = Simulator(model, dt=p.dt)
