@@ -9,7 +9,7 @@ def find_offset(a, b):
 def bootstrapci(data, func, n=3000, p=0.95):
     index=int(n*(1-p)/2)
 
-    samples = np.random.choice(data, size=n)
+    samples = np.random.choice(data, size=(n, len(data)))
     r = [func(s) for s in samples]
     r.sort()
     return r[index], r[-index]
