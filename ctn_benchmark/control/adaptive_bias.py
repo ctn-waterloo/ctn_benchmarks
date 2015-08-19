@@ -43,7 +43,13 @@ class AdaptiveControl(ctn_benchmark.Benchmark):
                     motor_delay=p.delay, sensor_delay=p.delay,
                     motor_filter=p.filter, sensor_filter=p.filter)
 
+            self.system_state = []
+            self.system_desired = []
+            self.system_t = []
             def minsim_system(t, x):
+                self.system_desired.append(signal.value(t))
+                self.system_t.append(t)
+                self.system_state.append(system.state)
                 return system.step(x)
 
             minsim = nengo.Node(minsim_system, size_in=p.D, size_out=p.D)
@@ -75,7 +81,8 @@ class AdaptiveControl(ctn_benchmark.Benchmark):
             nengo.Connection(desired, control[p.D:], synapse=None)
 
             self.p_desired = nengo.Probe(desired, synapse=None)
-            self.p_q = nengo.Probe(state_node, synapse=None)
+            # TODO: why doesn't this probe work on nengo_spinnaker?
+            #self.p_q = nengo.Probe(state_node, synapse=None)
             self.p_u = nengo.Probe(control, synapse=None)
         return model
 
@@ -85,23 +92,26 @@ class AdaptiveControl(ctn_benchmark.Benchmark):
         #    sim.run(p.dt, progress_bar=False)
         sim.run(p.T)
 
-        q = sim.data[self.p_q][:,0]
-        d = sim.data[self.p_desired][:,0]
-        t = sim.trange()
+        data_p_q = np.array(self.system_state)
+        data_p_desired = np.array(self.system_desired)
+        t = np.array(self.system_t)
+
+        q = data_p_q[:,0]
+        d = data_p_desired[:,0]
 
         N = len(q) / 2
 
         # find an offset that lines up the data best (this is the delay)
         offsets = []
         for i in range(p.D):
-            q = sim.data[self.p_q][:,i]
-            d = sim.data[self.p_desired][:,i]
+            q = data_p_q[:,i]
+            d = data_p_desired[:,i]
             offset = ctn_benchmark.stats.find_offset(q[N:], d[N:])
             if offset == 0:
                 offset = 1
             offsets.append(offset)
         offset = int(np.mean(offsets))
-        delay = p.dt * offset
+        delay = np.mean(t[1:] - t[:-1]) * offset
 
         if plt is not None:
             plt.plot(t[offset:], d[:-offset], label='$q_d$')
@@ -112,7 +122,7 @@ class AdaptiveControl(ctn_benchmark.Benchmark):
             #plt.plot(np.correlate(d, q, 'full')[len(q):])
 
 
-        diff = sim.data[self.p_desired][:-offset] - sim.data[self.p_q][offset:]
+        diff = data_p_desired[:-offset] - data_p_q[offset:]
         diff = diff[N:]
         rmse = np.sqrt(np.mean(diff.flatten()**2))
 
