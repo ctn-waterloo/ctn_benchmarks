@@ -40,14 +40,15 @@ class SPASequence(ctn_benchmark.Benchmark):
         sim.run(p.T)
         self.record_speed(p.T)
 
-        best = np.argmax(sim.data[self.probe], axis=1)
+        index = int(0.05 / p.dt)
+        best = np.argmax(sim.data[self.probe][index:], axis=1)
         change = np.diff(best)
         change_points = np.where(change != 0)[0]
         intervals = np.diff(change_points * p.dt)
 
         if plt is not None:
             plt.plot(sim.trange(), sim.data[self.probe])
-            plt.plot(sim.trange()[1:], np.where(change!=0,1,0))
+            plt.plot(sim.trange()[index + 1:], np.where(change!=0,1,0))
 
 
 
