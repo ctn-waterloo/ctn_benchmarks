@@ -1,15 +1,19 @@
 
 import ctn_benchmark
 
-def run_sims(backend):
+def run_sims(backend, data_dir):
     for i in range(30):
-        ctn_benchmark.nengo.SPASequence().run(seed=i, data_dir=backend, 
-                                              backend=backend)
+        ctn_benchmark.nengo.SPASequence().run(seed=i, data_dir=data_dir,
+                                              backend=backend, debug=True)
 
 def task_nengo():
-    return dict(actions=[(run_sims, ['nengo'])])
-def task_nengo_ocl():
-    return dict(actions=[(run_sims, ['nengo_ocl'])])
+    return dict(actions=[(run_sims, ['nengo', 'nengo'])])
+def task_ocl():
+    return dict(actions=[(run_sims, ['nengo_ocl', 'ocl'])])
+def task_spinn():
+    return dict(actions=[(run_sims, ['nengo_spinnaker', 'spinn'])])
+def task_sp_rmv():
+    return dict(actions=[(run_sims, ['nengo_spinnaker', 'sp_rmv'])])
 
 import os
 import numpy as np
@@ -86,7 +90,10 @@ def task_plot():
     def plot():
         import pylab
 
-        plot = Plot([Data('nengo'), Data('nengo_ocl', label='ocl')])
+        plot = Plot([Data('nengo'),
+                     Data('ocl'),
+                     Data('spinn'),
+                     Data('sp_rmv')])
 
         plot.measures(['period', 'period_sd', 'peak', 'peak_sd'])
 
