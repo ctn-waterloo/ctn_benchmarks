@@ -64,3 +64,23 @@ class Plot(object):
                          rotation='vertical')
             plt.xlabel(m)
         plt.tight_layout()
+
+    def vary(self, x, measures, plt=None):
+        if plt is None:
+            plt = matplotlib.pyplot
+            plt.figure()
+
+        for i, m in enumerate(measures):
+            plt.subplot(1, len(measures), i+1)
+
+            for j, data in enumerate(self.data):
+                c = self.color(j)
+
+                xx = data.get(x)
+                d = data.get(m)
+
+                plt.scatter(xx, d, color=c)
+            plt.xlabel(m)
+        plt.tight_layout()
+
+
