@@ -5,3 +5,4 @@ from .convolution import CircularConvolution
 from .sequence import SPASequence
 from .conv_cleanup import ConvolutionCleanup
 from .learning import LearningSpeedup
+from .parse import Parsing
