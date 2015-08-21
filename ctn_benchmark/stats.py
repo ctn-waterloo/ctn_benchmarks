@@ -6,10 +6,10 @@ def find_offset(a, b):
     index = np.argmax(corr[len(a):])
     return index
 
-def bootstrapci(data, func, n=3000, p=0.95):
+def bootstrapci(data, func, n=3000, p=0.95, weights=None):
     index=int(n*(1-p)/2)
 
-    samples = np.random.choice(data, size=(n, len(data)))
+    samples = np.random.choice(data, size=(n, len(data)), p=weights)
     r = [func(s) for s in samples]
     r.sort()
     return r[index], r[-index]
