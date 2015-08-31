@@ -16,7 +16,7 @@ class Plot(object):
         return self.colors[index % len(self.colors)]
 
     def measures(self, measures, plt=None, width=0.8, outlier_cutoff=3.0,
-                 show_outliers=True):
+                 show_outliers=True, ylim=None):
         if plt is None:
             plt = matplotlib.pyplot
             plt.figure()
@@ -55,7 +55,7 @@ class Plot(object):
                                  color=c)
                 plt.scatter(np.linspace(j-width/4, j+width/4, len(d)),
                               d, marker='x', color='k', s=30)
-                if show_outliers:
+                if show_outliers and outlier_cutoff is not None:
                     plt.scatter(np.linspace(j-width/4, j+width/4, len(out)),
                               out, marker='.', color='k', s=60)
             plt.errorbar(range(len(means)), means, yerr=np.array(error_bars).T,
@@ -63,6 +63,8 @@ class Plot(object):
             plt.xticks(range(len(self.data)), [d.label for d in self.data],
                          rotation='vertical')
             plt.xlabel(m)
+            if ylim is not None:
+                plt.ylim(*ylim)
         plt.tight_layout()
 
     def vary(self, x, measures, plt=None):
