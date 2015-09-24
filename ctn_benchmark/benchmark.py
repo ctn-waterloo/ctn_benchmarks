@@ -48,6 +48,7 @@ class Benchmark(object):
         self.default('save raw data', save_raw=False)
         self.default('save figures', save_figs=False)
         self.default('save results', save_results=False)
+        self.default('use nengo_gui', gui=False)
         self.hidden_params.extend(['data_dir', 'show_figs', 'debug',
                                    'save_raw', 'save_figs', 'save_results'])
 
@@ -91,6 +92,12 @@ class Benchmark(object):
         np.random.seed(p.seed)
 
         model = self.model(p)
+        if p.gui:
+            import nengo_gui
+            nengo_gui.GUI(model=model, filename=self.__class__.__name__,
+                          locals=dict(model=model), interactive=False, 
+                          allow_file_change=False).start()
+            return
         module = importlib.import_module(p.backend)
         Simulator = module.Simulator
 
