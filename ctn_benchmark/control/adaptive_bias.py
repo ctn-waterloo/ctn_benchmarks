@@ -11,7 +11,7 @@ class ZeroDecoder(nengo.solvers.Solver):
     def __call__(self, A, Y, rng=None, E=None):
         return np.zeros((A.shape[1], Y.shape[1]), dtype=float), []
 
-class AdaptiveControl(ctn_benchmark.Benchmark):
+class AdaptiveBias(ctn_benchmark.Benchmark):
     def params(self):
         self.default('Kp', Kp=2.0)
         self.default('Kd', Kd=1.0)
@@ -42,23 +42,27 @@ class AdaptiveControl(ctn_benchmark.Benchmark):
                     motor_scale=10,
                     motor_delay=p.delay, sensor_delay=p.delay,
                     motor_filter=p.filter, sensor_filter=p.filter)
+            self.system = system
 
             self.system_state = []
             self.system_desired = []
             self.system_t = []
+            self.system_control = []
             def minsim_system(t, x):
+                self.system_control.append(x)
                 self.system_desired.append(signal.value(t))
                 self.system_t.append(t)
                 self.system_state.append(system.state)
                 return system.step(x)
 
-            minsim = nengo.Node(minsim_system, size_in=p.D, size_out=p.D)
+            minsim = nengo.Node(minsim_system, size_in=p.D, size_out=p.D,
+                                label='minsim')
 
-            state_node = nengo.Node(lambda t: system.state)
+            state_node = nengo.Node(lambda t: system.state, label='state')
 
             pid = ctrl.PID(p.Kp, p.Kd, p.Ki, tau_d=p.tau_d)
             control = nengo.Node(lambda t, x: pid.step(x[:p.D], x[p.D:]),
-                                 size_in=p.D*2)
+                                 size_in=p.D*2, label='control')
             nengo.Connection(minsim, control[:p.D], synapse=0)
             nengo.Connection(control, minsim, synapse=None)
 
@@ -66,8 +70,10 @@ class AdaptiveControl(ctn_benchmark.Benchmark):
 
 
                 adapt = nengo.Ensemble(p.n_neurons, dimensions=p.D,
-                                       radius=p.radius)
+                                       radius=p.radius, label='adapt')
                 nengo.Connection(minsim, adapt, synapse=None)
+                #adapt_signal = nengo.Node(None, size_in=p.D, label='adapt_signal')
+                #nengo.Connection(adapt_signal, minsim, synapse=None)
                 conn = nengo.Connection(adapt, minsim, synapse=p.synapse,
                         function=lambda x: [0]*p.D,
                         solver=ZeroDecoder(),
@@ -77,7 +83,7 @@ class AdaptiveControl(ctn_benchmark.Benchmark):
                         transform=-1)
 
             signal = ctrl.Signal(p.D, p.period, dt=p.dt, max_freq=p.max_freq, seed=p.seed)
-            desired = nengo.Node(signal.value)
+            desired = nengo.Node(signal.value, label='desired')
             nengo.Connection(desired, control[p.D:], synapse=None)
 
             self.p_desired = nengo.Probe(desired, synapse=None)
@@ -130,5 +136,5 @@ class AdaptiveControl(ctn_benchmark.Benchmark):
         return dict(delay=delay, rmse=rmse)
 
 if __name__ == '__main__':
-    AdaptiveControl().run()
+    AdaptiveBias().run()
 
