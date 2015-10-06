@@ -95,15 +95,18 @@ class Benchmark(object):
         if p.gui:
             import nengo_gui
             nengo_gui.GUI(model=model, filename=self.__class__.__name__,
-                          locals=dict(model=model), interactive=False, 
+                          locals=dict(model=model), interactive=False,
                           allow_file_change=False).start()
             return
         module = importlib.import_module(p.backend)
         Simulator = module.Simulator
 
         if p.backend == 'nengo_spinnaker':
-            import nengo_spinnaker
-            nengo_spinnaker.add_spinnaker_params(model.config)
+            try:
+                _ = model.config[nengo.Node].function_of_time
+            except AttributeError:
+                import nengo_spinnaker
+                nengo_spinnaker.add_spinnaker_params(model.config)
             for node in model.all_nodes:
                 if (node.size_in == 0 and
                     node.size_out > 0 and
