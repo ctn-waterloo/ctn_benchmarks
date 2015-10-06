@@ -19,6 +19,10 @@ class SemanticMemory(ctn_benchmark.Benchmark):
         self.default('number of symbols', n_symbols=4)
         self.default('time to recall', T=1.0)
         self.default('dimensions', D=16)
+        self.default('split passthrough nodes', split_max_dim=64)
+        self.default('parallel filter max dimensions', pf_max_dim=16)
+        self.default('parallel filter chips', pf_n_chips=1)
+        self.default('parallel filter cores per chip', pf_cores=16)
 
     def model(self, p):
         model = spa.SPA()
@@ -48,7 +52,18 @@ class SemanticMemory(ctn_benchmark.Benchmark):
             self.p_memory = nengo.Probe(model.memory.output, synapse=0.03)
             self.vocab = model.get_output_vocab('memory')
 
-        self.replaced = split.split_passthrough(model, max_dim=16)
+        self.replaced = split.split_passthrough(model, max_dim=p.split_max_dim)
+
+        if p.backend == 'nengo_spinnaker':
+            import nengo_spinnaker
+            nengo_spinnaker.add_spinnaker_params(model.config)
+            for node in model.all_nodes:
+                if node.output is None:
+                    if node.size_in > p.pf_max_dim:
+                        print 'limiting', node
+                        model.config[node].n_cores_per_chip = p.pf_cores
+                        model.config[node].n_chips = p.pf_n_chips
+
         return model
     def evaluate(self, p, sim, plt):
         T = p.T + p.time_per_symbol * p.n_symbols
