@@ -54,7 +54,8 @@ class SemanticMemory(ctn_benchmark.Benchmark):
             self.vocab = model.get_output_vocab('memory')
 
         split.split_input_nodes(model, max_dim=16)
-        self.replaced = split.split_passthrough(model, max_dim=p.split_max_dim)
+        self.replaced = split.split_passthrough(model,
+                                                max_dim=p.split_max_dim)
         if p.pass_ensembles > 0:
             split.pass_ensembles(model, max_dim=p.pass_ensembles)
 
@@ -67,7 +68,8 @@ class SemanticMemory(ctn_benchmark.Benchmark):
                         print 'limiting', node
                         model.config[node].n_cores_per_chip = p.pf_cores
                         model.config[node].n_chips = p.pf_n_chips
-            model.config[nengo_spinnaker.Simulator].placer_kwargs = dict(effort=0.1)
+            model.config[
+                nengo_spinnaker.Simulator].placer_kwargs = dict(effort=0.1)
 
         return model
     def evaluate(self, p, sim, plt):
