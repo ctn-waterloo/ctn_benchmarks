@@ -198,3 +198,22 @@ def pass_ensembles(model, max_dim=16):
                     parents[c].connections.remove(c)
 
 
+def remove_outputless_passthrough(model):
+    replaced = {}
+    inputs = {}
+    outputs = {}
+    parents = {}
+    gather_info(model, inputs, outputs, parents)
+
+    for node in model.all_nodes[:]:
+        if node.output is None and node not in outputs:
+            for p in model.probes:
+                if p.target is node:
+                    break
+            else:
+                for c in inputs[node]:
+                    parents[c].connections.remove(c)
+                parents[node].nodes.remove(node)
+
+
+

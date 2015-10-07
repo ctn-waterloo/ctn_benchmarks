@@ -24,6 +24,7 @@ class SemanticMemory(ctn_benchmark.Benchmark):
         self.default('parallel filter chips', pf_n_chips=1)
         self.default('parallel filter cores per chip', pf_cores=16)
         self.default('passthrough for ensembles', pass_ensembles=0)
+        self.default('used a fixed seed for all ensembles', fixed_seed=False)
 
     def model(self, p):
         model = spa.SPA()
@@ -70,6 +71,12 @@ class SemanticMemory(ctn_benchmark.Benchmark):
                         model.config[node].n_chips = p.pf_n_chips
             model.config[
                 nengo_spinnaker.Simulator].placer_kwargs = dict(effort=0.1)
+
+        split.remove_outputless_passthrough(model)
+
+        if p.fixed_seed:
+            for ens in model.all_ensembles:
+                ens.seed = 1
 
         return model
     def evaluate(self, p, sim, plt):

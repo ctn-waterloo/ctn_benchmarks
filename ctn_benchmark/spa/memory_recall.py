@@ -86,6 +86,7 @@ class SemanticMemory(ctn_benchmark.Benchmark):
             model.config[
                 nengo_spinnaker.Simulator].placer_kwargs = dict(effort=0.1)
 
+        split.remove_outputless_passthrough(model)
         return model
     def evaluate(self, p, sim, plt):
         T = p.T + p.time_per_symbol * p.n_symbols
