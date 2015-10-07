@@ -109,3 +109,92 @@ def split_passthrough(model, max_dim=16):
             replaced[p] = probes
 
     return replaced
+
+
+def split_input_nodes(model, max_dim=16):
+    replaced = {}
+    inputs = {}
+    outputs = {}
+    parents = {}
+    gather_info(model, inputs, outputs, parents)
+
+    for node in model.all_nodes[:]:
+        if node.size_in == 0 and node.size_out > max_dim:
+            index = 0
+            nodes = []
+            slices = []
+            function = node.output
+
+            while index < node.size_out:
+                size = min(node.size_out - index, max_dim)
+                label = node.label
+                if label is not None:
+                    label += '[%d:%d]' % (index, index + size)
+
+                with parents[node]:
+                    n = nengo.Node(node.output, size_in=0,
+                                   size_out=node.size_out,
+                                   label=label)
+                    nodes.append(n)
+                    slices.append(slice(index, index + size))
+                index += size
+
+            for c in outputs[node]:
+                assert c.pre_slice == slice(None, None)
+                assert c.transform == 1.0
+
+                with parents[c]:
+                    for i, n in enumerate(nodes):
+                        nengo.Connection(n[slices[i]],
+                                         c.post[slices[i]],
+                                         synapse=c.synapse,
+                                         )
+                parents[c].connections.remove(c)
+            parents[node].nodes.remove(node)
+
+
+
+
+
+
+
+
+def pass_ensembles(model, max_dim=16):
+    replaced = {}
+    inputs = {}
+    outputs = {}
+    parents = {}
+    gather_info(model, inputs, outputs, parents)
+
+    for ens in model.all_ensembles[:]:
+        total_out = {}
+        conns = {}
+        for c in outputs[ens]:
+            if isinstance(c.post, nengo.ensemble.Neurons):
+                continue
+            if c.function is None:
+                key = None, None
+            else:
+                key = c.function, repr(c.pre_slice)
+            if key not in total_out:
+                total_out[key] = c.size_out
+                conns[key] = [c]
+            else:
+                total_out[key] += c.size_out
+                conns[key].append(c)
+
+        for key, total in total_out.items():
+            if total > max_dim:
+                f, slice = key
+                cs = conns[key]
+                with parents[ens]:
+                    node = nengo.Node(None, size_in=cs[0].size_mid)
+                    pre = ens if slice is None else ens[cs[0].pre_slice]
+                    nengo.Connection(pre, node, synapse=None, function=f)
+                for c in cs:
+                    with parents[c]:
+                        nengo.Connection(node, c.post, synapse=c.synapse,
+                                         transform=c.transform)
+                    parents[c].connections.remove(c)
+
+
