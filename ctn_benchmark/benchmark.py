@@ -47,6 +47,7 @@ class Benchmark(object):
         self.default('enable debug messages', debug=False)
         self.default('save raw data', save_raw=False)
         self.default('save figures', save_figs=False)
+        self.default('hide overlay on figures', hide_overlay=False)
         self.default('save results', save_results=False)
         self.default('use nengo_gui', gui=False)
         self.hidden_params.extend(['data_dir', 'show_figs', 'debug',
@@ -134,7 +135,7 @@ class Benchmark(object):
             text.append('%s = %s' % (k, repr(v)))
 
 
-        if plt is not None:
+        if plt is not None and not p.hide_overlay:
             plt.suptitle(fn +'\n' + '\n'.join(text),
                          fontsize=8)
             plt.figtext(0.13,0.12,'\n'.join(self.args_text))
