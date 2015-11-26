@@ -86,3 +86,40 @@ class Plot(object):
         plt.tight_layout()
 
 
+    def lines(self, x, measures, plt=None, x_offset=0):
+        if plt is None:
+            plt = matplotlib.pyplot
+            plt.figure()
+
+        for i, m in enumerate(measures):
+            plt.subplot(1, len(measures), i+1)
+
+            for j, data in enumerate(self.data):
+                c = self.color(j)
+
+                xx = data.get(x)
+                d = data.get(m)
+
+                bins = {}
+                for k, xxx in enumerate(xx):
+                    if xxx not in bins:
+                        bins[xxx] = [d[k]]
+                    else:
+                        bins[xxx].append(d[k])
+                means = []
+                error_bars = []
+                x_values = []
+                for x_value, y_vals in sorted(bins.items()):
+                    x_values.append(x_value + x_offset*j)
+                    mean = np.mean(y_vals)
+                    means.append(mean)
+                    ci = stats.bootstrapci(y_vals, np.mean)
+                    error_bars.append([mean-ci[0], ci[1]-mean])
+
+                plt.errorbar(x_values, means, yerr=np.array(error_bars).T,
+                         color=c, lw=2)
+            plt.ylabel(m)
+            plt.xlabel(x)
+        plt.tight_layout()
+
+
