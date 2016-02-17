@@ -90,6 +90,16 @@ class TestParameterSet(object):
         ps.add_parameter(parameters.Parameter('p', "desc", default=0))
         assert dict(ps) == {'p': 0}
 
+    def test_setting_with_kwargs(self, ps):
+        ps.add_parameter(parameters.Parameter('p1', "desc", default=0))
+        ps.add_parameter(parameters.Parameter('p2', "desc", default=0))
+        ps.set(p1=1, p2=2)
+        assert ps.p1 == 1
+        assert ps.p2 == 2
+
+        with pytest.raises(KeyError):
+            ps.set(nonexistent=3)
+
 
 class TestArgumentParserConversion(object):
     @pytest.fixture()

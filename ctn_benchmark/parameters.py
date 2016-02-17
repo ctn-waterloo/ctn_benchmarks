@@ -73,6 +73,9 @@ class ParameterSet(MutableMapping):
     def __setattr__(self, name, value):
         self[name] = value
 
+    def set(self, **kwargs):
+        for k, v in kwargs.items():
+            self[k] = v
 
 def to_argparser(parameter_set):
     parser = argparse.ArgumentParser(add_help=False)
