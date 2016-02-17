@@ -39,3 +39,32 @@ class TestAction(object):
 
         inst = ActionClass()
         assert inst.dummy_action.params.foo == 23
+        assert inst.dummy_action.all_params.foo == 23
+
+    def test_allows_to_retrieve_all_parameters(self):
+        class ActionClass(object):
+            @benchmark.Action
+            def dependency(self, p):
+                return p.foo
+
+            @dependency.params
+            def dependency(self):
+                ps = parameters.ParameterSet()
+                ps.add_default("foo", foo=23)
+                return ps
+
+            @benchmark.Action
+            def dependent_action(self, p, dependency):
+                return p.bar
+
+            @dependent_action.params
+            def dependent_action(self):
+                ps = parameters.ParameterSet()
+                ps.add_default("bar", bar=42)
+                return ps
+
+        inst = ActionClass()
+        assert 'foo' not in inst.dependent_action.params
+        assert inst.dependent_action.params.bar == 42
+        assert inst.dependent_action.all_params.foo == 23
+        assert inst.dependent_action.all_params.bar == 42

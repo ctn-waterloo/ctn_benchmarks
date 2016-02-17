@@ -21,16 +21,29 @@ class _ActionInvoker(object):
         self.action = action
 
     def __call__(self, p):
+        return self.action.f_action(
+            self.instance, p,
+            **{k: v(p) for k, v in self.dependencies.items()})
+
+    @property
+    def dependencies(self):
         args = inspect.getargspec(self.action.f_action).args
         dependencies = {}
         for name in args[2:]:  # first two arguments are self and p
-            # TODO caching
-            dependencies[name] = getattr(self.instance, name)(p)
-        return self.action.f_action(self.instance, p, **dependencies)
+            dependencies[name] = getattr(self.instance, name)
+        return dependencies
 
     @property
     def params(self):
         return self.action.f_params(self.instance)
+
+    @property
+    def all_params(self):
+        ps = ParameterSet()
+        for dependency in self.dependencies.values():
+            ps.add_parameter_set(dependency.all_params)
+        ps.add_parameter_set(self.params)
+        return ps
 
 
 class Action(object):
