@@ -81,3 +81,43 @@ class TestParameterSet(object):
     def test_conversion_to_dict(self, ps):
         ps.add_parameter(parameters.Parameter('p', "desc", default=0))
         assert dict(ps) == {'p': 0}
+
+
+class TestArgumentParserConversion(object):
+    @pytest.fixture()
+    def ps(self):
+        ps = parameters.ParameterSet()
+        ps.add_default("intarg", intarg=0)
+        ps.add_default("strarg", strarg='abc')
+        return ps
+
+    def test_sets_defaults(self, ps):
+        parser = parameters.to_argparser(ps)
+        args = parser.parse_args([])
+        assert args.intarg == 0
+        assert args.strarg == 'abc'
+
+    def test_sets_type(self, ps):
+        parser = parameters.to_argparser(ps)
+        args = parser.parse_args([])
+        assert isinstance(args.intarg, int)
+        assert isinstance(args.strarg, str)
+
+    def test_parses_cmd_arguments(self, ps):
+        parser = parameters.to_argparser(ps)
+        args = parser.parse_args(['--intarg', '42', '--strarg', 'lorem'])
+        assert args.intarg == 42
+        assert args.strarg == 'lorem'
+
+    def test_handles_bool(self, ps):
+        ps.add_default("true", true=True)
+        ps.add_default("false", false=False)
+        parser = parameters.to_argparser(ps)
+
+        args = parser.parse_args([])
+        assert args.true is True
+        assert args.false is False
+
+        args = parser.parse_args(['--no_true', '--false'])
+        assert args.true is False
+        assert args.false is True

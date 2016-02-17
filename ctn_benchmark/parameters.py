@@ -1,3 +1,4 @@
+import argparse
 from collections import MutableMapping
 
 
@@ -67,3 +68,20 @@ class ParameterSet(MutableMapping):
 
     def __setattr__(self, name, value):
         self[name] = value
+
+
+def to_argparser(parameter_set):
+    parser = argparse.ArgumentParser(add_help=False)
+    for v in parameter_set.params.values():
+        if v.default is True:
+            parser.add_argument(
+                '--no_' + v.name, action='store_false', dest=v.name,
+                help=v.description)
+        elif v.default is False:
+            parser.add_argument(
+                '--' + v.name, action='store_true', help=v.description)
+        else:
+            parser.add_argument(
+                '--' + v.name, type=v.param_type, default=v.default,
+                help=v.description)
+    return parser
