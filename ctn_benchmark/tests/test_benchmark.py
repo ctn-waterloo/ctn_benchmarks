@@ -32,10 +32,8 @@ class TestAction(object):
                 return p.foo
 
             @dummy_action.params
-            def dummy_action(self):
-                ps = parameters.ParameterSet()
+            def dummy_action(self, ps):
                 ps.add_default("foo", foo=23)
-                return ps
 
         inst = ActionClass()
         assert inst.dummy_action.params.foo == 23
@@ -48,20 +46,16 @@ class TestAction(object):
                 return p.foo
 
             @dependency.params
-            def dependency(self):
-                ps = parameters.ParameterSet()
+            def dependency(self, ps):
                 ps.add_default("foo", foo=23)
-                return ps
 
             @benchmark.Action
             def dependent_action(self, p, dependency):
                 return p.bar
 
             @dependent_action.params
-            def dependent_action(self):
-                ps = parameters.ParameterSet()
+            def dependent_action(self, ps):
                 ps.add_default("bar", bar=42)
-                return ps
 
         inst = ActionClass()
         assert 'foo' not in inst.dependent_action.params

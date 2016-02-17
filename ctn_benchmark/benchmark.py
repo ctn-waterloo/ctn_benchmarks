@@ -35,7 +35,9 @@ class _ActionInvoker(object):
 
     @property
     def params(self):
-        return self.action.f_params(self.instance)
+        ps = ParameterSet()
+        self.action.f_params(self.instance, ps)
+        return ps
 
     @property
     def all_params(self):
