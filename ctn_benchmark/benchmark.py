@@ -15,6 +15,32 @@ import numpy as np
 from ctn_benchmark.parameters import ParameterSet, to_argparser
 
 
+class Action(object):
+    def __init__(self, f_action, f_params=None, name=None):
+        if name is None:
+            name = f_action.__name__
+        self.f_action = f_action
+        if f_params is None:
+            f_params = lambda inst: ParameterSet()
+        self.f_params = f_params
+        self.name = name
+
+    def params(self, f_params):
+        self.f_params = f_params
+        return self
+
+    def __get__(self, instance, owner):
+        return lambda p: self(instance, p)
+
+    def __call__(self, inst, p):
+        args = inspect.getargspec(self.f_action).args
+        dependencies = {}
+        for name in args[2:]:  # first two arguments are self and p
+            dependencies[name] = getattr(inst, name)(p)  # TODO caching
+        return self.f_action(inst, p, **dependencies)
+
+
+
 class Benchmark(object):
     def __init__(self):
         self.parameters = ParameterSet()
