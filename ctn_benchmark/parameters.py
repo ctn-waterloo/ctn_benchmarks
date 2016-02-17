@@ -77,8 +77,10 @@ class ParameterSet(MutableMapping):
         for k, v in kwargs.items():
             self[k] = v
 
-def to_argparser(parameter_set):
-    parser = argparse.ArgumentParser(add_help=False)
+
+def to_argparser(parameter_set, parser=None):
+    if parser is None:
+        parser = argparse.ArgumentParser(add_help=False)
     for v in parameter_set.params.values():
         if v.default is True:
             parser.add_argument(

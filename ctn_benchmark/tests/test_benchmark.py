@@ -62,3 +62,29 @@ class TestAction(object):
         assert inst.dependent_action.params.bar == 42
         assert inst.dependent_action.all_params.foo == 23
         assert inst.dependent_action.all_params.bar == 42
+
+
+class TestCmdRunActions(object):
+    class ActionClass(object):
+        @benchmark.Action
+        def dummy_action(self, p):
+            return p.foo
+
+        @dummy_action.params
+        def dummy_action(self, ps):
+            ps.add_default("foo", foo=42)
+
+    def test_invoke_action(self):
+        assert benchmark.cmd_run_actions(
+            self.ActionClass(), argv=['dummy_action']) == 42
+
+    def test_set_parameter(self):
+        assert benchmark.cmd_run_actions(
+            self.ActionClass(), argv=['dummy_action', '--foo', '23']) == 23
+
+    def test_invoke_default(self):
+        assert benchmark.cmd_run_actions(
+            self.ActionClass(), default='dummy_action', argv=[]) == 42
+        assert benchmark.cmd_run_actions(
+            self.ActionClass(), default='dummy_action',
+            argv=['--foo', '23']) == 23

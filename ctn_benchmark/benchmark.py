@@ -6,6 +6,7 @@ import inspect
 import logging
 import os
 import shelve
+import sys
 import time
 
 import matplotlib.pyplot
@@ -64,6 +65,36 @@ class Action(object):
 
     def __get__(self, instance, owner):
         return _ActionInvoker(instance, self)
+
+
+def gather_actions(action_class):
+    for attr_name in dir(action_class):
+        attr = getattr(action_class, attr_name)
+        if isinstance(attr, _ActionInvoker):
+            yield attr_name, attr
+
+
+def cmd_run_actions(action_class, default=None, argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+
+    # TODO provide useful description to parser
+    parser = argparse.ArgumentParser()
+    action_parsers = parser.add_subparsers(dest='action')
+    actions = gather_actions(action_class)
+
+    if default is not None:
+        if len(argv) < 1 or argv[1] not in [a[0] for a in actions]:
+            argv.insert(0, default)
+
+    for attr_name in dir(action_class):
+        attr = getattr(action_class, attr_name)
+        if isinstance(attr, _ActionInvoker):
+            action_parser = action_parsers.add_parser(attr_name)
+            to_argparser(attr.all_params, action_parser)
+
+    args = parser.parse_args(args=argv)
+    return getattr(action_class, args.action)(args)
 
 
 class Benchmark(object):
