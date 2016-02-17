@@ -24,3 +24,18 @@ class TestAction(object):
 
         inst = ActionClass()
         inst.dependent_action(parameters.ParameterSet())
+
+    def test_allows_to_define_parameters(self):
+        class ActionClass(object):
+            @benchmark.Action
+            def dummy_action(self, p):
+                return p.foo
+
+            @dummy_action.params
+            def dummy_action(self):
+                ps = parameters.ParameterSet()
+                ps.add_default("foo", foo=23)
+                return ps
+
+        inst = ActionClass()
+        assert inst.dummy_action.params.foo == 23

@@ -15,6 +15,24 @@ import numpy as np
 from ctn_benchmark.parameters import ParameterSet, to_argparser
 
 
+class _ActionInvoker(object):
+    def __init__(self, instance, action):
+        self.instance = instance
+        self.action = action
+
+    def __call__(self, p):
+        args = inspect.getargspec(self.action.f_action).args
+        dependencies = {}
+        for name in args[2:]:  # first two arguments are self and p
+            # TODO caching
+            dependencies[name] = getattr(self.instance, name)(p)
+        return self.action.f_action(self.instance, p, **dependencies)
+
+    @property
+    def params(self):
+        return self.action.f_params(self.instance)
+
+
 class Action(object):
     def __init__(self, f_action, f_params=None, name=None):
         if name is None:
@@ -30,15 +48,7 @@ class Action(object):
         return self
 
     def __get__(self, instance, owner):
-        return lambda p: self(instance, p)
-
-    def __call__(self, inst, p):
-        args = inspect.getargspec(self.f_action).args
-        dependencies = {}
-        for name in args[2:]:  # first two arguments are self and p
-            dependencies[name] = getattr(inst, name)(p)  # TODO caching
-        return self.f_action(inst, p, **dependencies)
-
+        return _ActionInvoker(instance, self)
 
 
 class Benchmark(object):
