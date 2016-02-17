@@ -78,6 +78,14 @@ class TestParameterSet(object):
         ps.params['p'].reset()
         assert ps.p == 0
 
+    def test_provides_hierarchical_attribute_access(self, ps):
+        ps.add_parameter(parameters.Parameter(
+            'root', "root", default=parameters.ParameterSet()))
+        ps.root.add_parameter(parameters.Parameter('leaf', "leaf", default=0))
+        assert ps.root.leaf == 0
+        ps.root.leaf = 1
+        assert ps.root.leaf == 1
+
     def test_conversion_to_dict(self, ps):
         ps.add_parameter(parameters.Parameter('p', "desc", default=0))
         assert dict(ps) == {'p': 0}
