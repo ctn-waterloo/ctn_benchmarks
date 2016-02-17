@@ -77,3 +77,7 @@ class TestParameterSet(object):
         assert ps.p == 1
         ps.params['p'].reset()
         assert ps.p == 0
+
+    def test_conversion_to_dict(self, ps):
+        ps.add_parameter(parameters.Parameter('p', "desc", default=0))
+        assert dict(ps) == {'p': 0}
