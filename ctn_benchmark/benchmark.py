@@ -9,34 +9,21 @@ import shelve
 import time
 
 import matplotlib.pyplot
+import nengo
 import numpy as np
 
-import nengo
+from ctn_benchmark.parameters import ParameterSet, to_argparser
 
 
 class Benchmark(object):
     def __init__(self):
-        self.parser = argparse.ArgumentParser(
-                            description='Nengo benchmark: %s' %
-                                 self.__class__.__name__)
-        self.param_names = []
+        self.parameters = ParameterSet()
         self.hidden_params = []
-        self.params()
         self.fixed_params()
+        self.params()
 
-    def default(self, description, **kwarg):
-        if len(kwarg) != 1:
-            raise ValueException('Must specify exactly one parameter')
-        k, v = kwarg.items()[0]
-        if k in self.param_names:
-            raise ValueException('Cannot redefine parameter "%s"' % k)
-        if v is False:
-            self.parser.add_argument('--%s' % k, action='store_true',
-                                     help=description)
-        else:
-            self.parser.add_argument('--%s' % k, type=type(v), default=v,
-                                     help=description)
-        self.param_names.append(k)
+    def default(self, description, **kwargs):
+        self.parameters.add_default(description, **kwargs)
 
     def fixed_params(self):
         self.default('backend to use', backend='nengo')
@@ -54,17 +41,21 @@ class Benchmark(object):
                                    'save_raw', 'save_figs', 'save_results'])
 
     def process_args(self, allow_cmdline=True, **kwargs):
+        param_parser = argparse.ArgumentParser(
+                parents=[to_argparser(self.parameters)],
+                description="Nengo benchmark: " + self.__class__.__name__)
+
         if len(kwargs) == 0 and allow_cmdline:
-            args = self.parser.parse_args()
+            args = param_parser.parse_args()
         else:
             args = argparse.Namespace()
-            for k in self.param_names:
-                v = kwargs.get(k, self.parser.get_default(k))
+            for k in self.parameters:
+                v = kwargs.get(k, param_parser.get_default(k))
                 setattr(args, k, v)
 
         name = self.__class__.__name__
         self.args_text = []
-        for k in self.param_names:
+        for k in self.parameters:
             if k not in self.hidden_params:
                 self.args_text.append('_%s = %r' % (k, getattr(args, k)))
 
