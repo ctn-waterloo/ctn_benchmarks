@@ -64,7 +64,7 @@ class TestAction(object):
         assert inst.dependent_action.all_params.bar == 42
 
 
-class TestCmdRunActions(object):
+class TestParseArgs(object):
     class ActionClass(object):
         @benchmark.Action
         def dummy_action(self, p):
@@ -75,16 +75,24 @@ class TestCmdRunActions(object):
             ps.add_default("foo", foo=42)
 
     def test_invoke_action(self):
-        assert benchmark.cmd_run_actions(
-            self.ActionClass(), argv=['dummy_action']) == 42
+        action, p = benchmark.parse_args(
+            self.ActionClass(), argv=['dummy_action'])
+        assert action.name == 'dummy_action'
+        assert p.foo == 42
 
     def test_set_parameter(self):
-        assert benchmark.cmd_run_actions(
-            self.ActionClass(), argv=['dummy_action', '--foo', '23']) == 23
+        action, p = benchmark.parse_args(
+            self.ActionClass(), argv=['dummy_action', '--foo', '23'])
+        assert action.name == 'dummy_action'
+        assert p.foo == 23
 
     def test_invoke_default(self):
-        assert benchmark.cmd_run_actions(
-            self.ActionClass(), default='dummy_action', argv=[]) == 42
-        assert benchmark.cmd_run_actions(
-            self.ActionClass(), default='dummy_action',
-            argv=['--foo', '23']) == 23
+        action, p = benchmark.parse_args(
+            self.ActionClass(), default='dummy_action', argv=[])
+        assert action.name == 'dummy_action'
+        assert p.foo == 42
+
+        action, p = benchmark.parse_args(
+            self.ActionClass(), default='dummy_action', argv=['--foo', '23'])
+        assert action.name == 'dummy_action'
+        assert p.foo == 23
