@@ -25,25 +25,29 @@ class _ActionInvoker(object):
     def __call__(self, p):
         if self.instance in self.action.results:
             return self.action.results[self.instance]
-        self.action.f_pre(self.instance, p)
+        self.action.f_pre(
+            self.instance, p, **self.eval_dependencies(self.action.f_pre, p))
         result = self.action.f_action(
             self.instance, p,
-            **{k: v(p) for k, v in self.dependencies.items()})
+            **self.eval_dependencies(self.action.f_action, p))
         self.action.results[self.instance] = result
-        self.action.f_post(self.instance, p)
+        self.action.f_post(
+            self.instance, p, **self.eval_dependencies(self.action.f_post, p))
         return result
 
     @property
     def name(self):
         return self.action.name
 
-    @property
-    def dependencies(self):
-        args = inspect.getargspec(self.action.f_action).args
+    def get_dependencies(self, fn):
+        args = inspect.getargspec(fn).args
         dependencies = {}
         for name in args[2:]:  # first two arguments are self and p
             dependencies[name] = getattr(self.instance, name)
         return dependencies
+
+    def eval_dependencies(self, fn, p):
+        return {k: v(p) for k, v in self.get_dependencies(fn).items()}
 
     @property
     def params(self):
@@ -54,7 +58,11 @@ class _ActionInvoker(object):
     @property
     def all_params(self):
         ps = ParameterSet()
-        for dependency in self.dependencies.values():
+        for dependency in self.get_dependencies(self.action.f_action).values():
+            ps.add_parameter_set(dependency.all_params)
+        for dependency in self.get_dependencies(self.action.f_pre).values():
+            ps.add_parameter_set(dependency.all_params)
+        for dependency in self.get_dependencies(self.action.f_post).values():
             ps.add_parameter_set(dependency.all_params)
         ps.add_parameter_set(self.params)
         return ps

@@ -81,8 +81,10 @@ class TestAction(object):
         class ActionClass(object):
             def __init__(self):
                 self.pre_called = False
+                self.pre_dep_called = False
                 self.action_called = False
                 self.post_called = False
+                self.post_dep_called = False
 
             @benchmark.Action
             def dependency(self, p):
@@ -94,13 +96,23 @@ class TestAction(object):
                 self.action_called = True
 
             @dummy_action.pre
-            def dummy_action(self, p):
+            def dummy_action(self, p, pre_dep):
+                assert self.pre_dep_called
                 self.pre_called = True
 
             @dummy_action.post
-            def dummy_action(self, p):
+            def dummy_action(self, p, post_dep):
                 assert self.action_called
+                assert self.post_dep_called
                 self.post_called = True
+
+            @benchmark.Action
+            def pre_dep(self, p):
+                self.pre_dep_called = True
+
+            @benchmark.Action
+            def post_dep(self, p):
+                self.post_dep_called = True
 
         inst = ActionClass()
         inst.dummy_action(parameters.ParameterSet())
