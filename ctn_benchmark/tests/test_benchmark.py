@@ -63,6 +63,20 @@ class TestAction(object):
         assert inst.dependent_action.all_params.foo == 23
         assert inst.dependent_action.all_params.bar == 42
 
+    def test_caches_results(self):
+        class ActionClass(object):
+            def __init__(self):
+                self.n_calls = 0
+
+            @benchmark.Action
+            def dummy_action(self, p):
+                self.n_calls += 1
+
+        inst = ActionClass()
+        inst.dummy_action(parameters.ParameterSet())
+        inst.dummy_action(parameters.ParameterSet())
+        assert inst.n_calls == 1
+
 
 class TestParseArgs(object):
     class ActionClass(object):

@@ -8,6 +8,7 @@ import os
 import shelve
 import sys
 import time
+from weakref import WeakKeyDictionary
 
 import matplotlib.pyplot
 import nengo
@@ -22,9 +23,13 @@ class _ActionInvoker(object):
         self.action = action
 
     def __call__(self, p):
-        return self.action.f_action(
+        if self.instance in self.action.results:
+            return self.action.results[self.instance]
+        result = self.action.f_action(
             self.instance, p,
             **{k: v(p) for k, v in self.dependencies.items()})
+        self.action.results[self.instance] = result
+        return result
 
     @property
     def name(self):
@@ -62,6 +67,7 @@ class Action(object):
             f_params = lambda inst, ps: ps
         self.f_params = f_params
         self.name = name
+        self.results = WeakKeyDictionary()
 
     def params(self, f_params):
         self.f_params = f_params
