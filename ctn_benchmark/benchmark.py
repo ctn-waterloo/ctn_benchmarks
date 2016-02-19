@@ -37,9 +37,6 @@ class _ActionInvoker(object):
     def name(self):
         return self.action.name
 
-    def impl(self, f_action):
-        return self.action.impl(f_action)
-
     @property
     def dependencies(self):
         args = inspect.getargspec(self.action.f_action).args
@@ -63,28 +60,6 @@ class _ActionInvoker(object):
         return ps
 
 
-class AbstractAction(object):
-    def __init__(self, name, pre=None, post=None):
-        self.name = name
-        self.f_pre = pre
-        self.f_post = post
-
-    def __call__(self, *args, **kwargs):
-        raise NotImplementedError()
-
-    def impl(self, f_action):
-        return Action(
-            f_action, pre=self.f_pre, post=self.f_post, name=self.name)
-
-    def pre(self, f_pre):
-        self.f_pre = f_pre
-        return self
-
-    def post(self, f_post):
-        self.f_post = f_post
-        return self
-
-
 class Action(object):
     def __init__(
             self, f_action, f_params=None, pre=None, post=None, name=None):
@@ -103,10 +78,6 @@ class Action(object):
         self.name = name
         self.results = WeakKeyDictionary()
 
-    def impl(self, f_action):
-        self.f_action = f_action
-        return self
-
     def params(self, f_params):
         self.f_params = f_params
         return self
@@ -121,13 +92,6 @@ class Action(object):
 
     def __get__(self, instance, owner):
         return _ActionInvoker(instance, self)
-
-
-class OptionalAction(Action):
-    def __init__(self, name, f_params=None, pre=None, post=None):
-        super(OptionalAction, self).__init__(
-            lambda inst, p: None, f_params=f_params, pre=pre, post=post,
-            name=name)
 
 
 def gather_actions(action_class):

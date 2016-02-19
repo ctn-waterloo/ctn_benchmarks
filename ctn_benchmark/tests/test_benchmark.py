@@ -1,5 +1,3 @@
-import pytest
-
 from ctn_benchmark import benchmark, parameters
 
 
@@ -106,77 +104,6 @@ class TestAction(object):
 
         inst = ActionClass()
         inst.dummy_action(parameters.ParameterSet())
-        assert inst.post_called
-
-    def test_abstract_action(self):
-        class BaseActionClass(object):
-            def __init__(self):
-                self.pre_called = False
-                self.action_called = False
-                self.post_called = False
-
-            dummy_action = benchmark.AbstractAction('dummy_action')
-
-            @dummy_action.pre
-            def dummy_action(self, p):
-                self.pre_called = True
-
-            @dummy_action.post
-            def dummy_action(self, p):
-                assert self.action_called
-                self.post_called = True
-
-
-        class ActionClass(BaseActionClass):
-            @BaseActionClass.dummy_action.impl
-            def dummy_action(self, p):
-                assert self.pre_called
-                self.action_called = True
-
-        base = BaseActionClass()
-        with pytest.raises(NotImplementedError):
-            base.dummy_action(parameters.ParameterSet())
-        assert not base.pre_called
-        assert not base.post_called
-
-        inst = ActionClass()
-        inst.dummy_action(parameters.ParameterSet())
-        assert inst.action_called
-        assert inst.post_called
-
-    def test_optional_action(self):
-        class BaseActionClass(object):
-            def __init__(self):
-                self.pre_called = False
-                self.action_called = False
-                self.post_called = False
-
-            dummy_action = benchmark.OptionalAction('dummy_action')
-
-            @dummy_action.pre
-            def dummy_action(self, p):
-                self.pre_called = True
-
-            @dummy_action.post
-            def dummy_action(self, p):
-                assert self.action_called
-                self.post_called = True
-
-
-        class ActionClass(BaseActionClass):
-            @BaseActionClass.dummy_action.impl
-            def dummy_action(self, p):
-                assert self.pre_called
-                self.action_called = True
-
-        base = BaseActionClass()
-        base.dummy_action(parameters.ParameterSet())
-        assert base.pre_called
-        assert base.post_called
-
-        inst = ActionClass()
-        inst.dummy_action(parameters.ParameterSet())
-        assert inst.action_called
         assert inst.post_called
 
 
