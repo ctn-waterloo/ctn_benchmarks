@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import argparse
 import importlib
@@ -11,6 +11,7 @@ import time
 from weakref import WeakKeyDictionary
 
 import matplotlib.pyplot
+import matplotlib.pyplot as plt
 import nengo
 import numpy as np
 
@@ -134,6 +135,199 @@ def parse_args(action_class, default=None, argv=None):
     return getattr(action_class, args.action), p
 
 
+class Benchmark2(object):
+    def __init__(self):
+        self.hidden_params = ['data_dir', 'debug']
+        self.probes = {}
+        self.start_time = None
+        self.sim_speed = None
+
+    def add_probes(self, **kwargs):
+        self.probes.update(kwargs)
+
+    def model(self, p):
+        raise NotImplementedError()
+
+    def model_params(self, ps):
+        pass
+
+    @Action
+    def _model(self, p):
+        return self.model(p)
+
+    @_model.params
+    def _model(self, ps):
+        self.model_params(ps)
+
+    def evaluate(self, p, sim):
+        raise NotImplementedError()
+
+    def evaluate_params(self, ps):
+        pass
+
+    @Action
+    def _evaluate(self, p, _sim):
+        self.start_time = time.time()
+        results = self.evaluate(p, _sim)
+        if hasattr(_sim, 'close'):
+            _sim.close()
+        return results
+
+    @_evaluate.params
+    def _evaluate(self, ps):
+        self.evaluate_params(ps)
+
+    def record_speed(self, t):
+        now = time.time()
+        self.sim_speed = t / (now - self.start_time)
+
+    def plot(self, p, sim, results):
+        pass
+
+    def plot_params(self, ps):
+        pass
+
+    @Action
+    def _plot(self, p, _sim, _evaluate):
+        return self.plot(p, _sim, _evaluate)
+
+    @_plot.params
+    def _plot(self, ps):
+        self.plot_params(ps)
+
+    @Action
+    def _sim(self, p, _model):
+        module = importlib.import_module(p.backend)
+        Simulator = module.Simulator
+
+        if p.backend == 'nengo_spinnaker':
+            try:
+                _ = _model.config[nengo.Node].function_of_time
+            except AttributeError:
+                import nengo_spinnaker
+                nengo_spinnaker.add_spinnaker_params(_model.config)
+            for node in _model.all_nodes:
+                if (node.size_in == 0 and node.size_out > 0 and
+                        callable(node.output)):
+                    _model.config[node].function_of_time = True
+
+        return Simulator(_model, dt=p.dt)
+
+    @_sim.params
+    def _sim(self, ps):
+        ps.add_default('backend to use', backend='nengo')
+        ps.add_default('time step', dt=0.001)
+
+    @Action
+    def _filename(self, p):
+        name = self.__class__.__name__
+        uid = np.random.randint(0x7FFFFFFF)
+        filename = name + '#' + time.strftime('%Y%m%d-%H%M%S')+('-%08x' % uid)
+
+        if not os.path.exists(p.data_dir):
+            os.mkdir(p.data_dir)
+
+        return os.path.join(p.data_dir, filename)
+
+    @_filename.params
+    def _filename(self, ps):
+        ps.add_default('data directory', data_dir='data')
+
+    @Action
+    def _text(self, p, _evaluate):
+        text = []
+        for k, v in sorted(_evaluate.items()):
+            text.append('%s = %s' % (k, repr(v)))
+        return text
+
+    @Action
+    def _args_text(self, p):
+        args_text = []
+        for k in p:
+            if k not in self.hidden_params:
+                args_text.append('_%s = %r' % (k, getattr(p, k)))
+        return args_text
+
+    @Action
+    def gui(self, p, _model):
+        import nengo_gui
+        nengo_gui.GUI(
+            model=_model, filename=self.__class__.__name__,
+            locals=dict(model=_model), interactive=False,
+            allow_file_change=False).start()
+
+    @Action
+    def _figs(self, p, _filename, _text, _args_text, _plot):
+        for i in plt.get_fignums():
+            fig = plt.figure(i)
+
+            if p.overlay:
+                fig.suptitle(
+                    os.path.basename(_filename) +'\n' + '\n'.join(_text),
+                    fontsize=8)
+                fig.text(0.13, 0.12, '\n'.join(_args_text))
+
+    @_figs.params
+    def _figs(self, ps):
+        ps.add_default('overlay on figures', overlay=True)
+
+    @Action
+    def save_figs(self, p, _filename, _figs):
+        for i in plt.get_fignums():
+            fig = plt.figure(i)
+            fig.savefig(_filename + p.ext, dpi=p.dpi)
+
+    @save_figs.params
+    def save_figs(self, ps):
+        ps.add_default("File extension of saved figures.", fig_ext='.png')
+        ps.add_default("Resolution of saved figures.", dpi=300)
+
+    @Action
+    def show_figs(self, p, _figs):
+        plt.show()
+
+    @Action
+    def save_raw(self, p, _filename, _sim, _evaluate):
+        db = shelve.open(_filename + '.db')
+        db['trange'] = _sim.trange()
+        for k, v in self.probes:
+            db[k] = _sim.data[v]
+        db.close()
+
+    @Action
+    def run(self, p, _filename, _args_text, _text, _evaluate):
+        text = _args_text + _text
+        text = '\n'.join(text)
+
+        with open(_filename + '.txt', 'w') as f:
+            f.write(text)
+        print(text)
+
+        return _evaluate
+
+    @run.pre
+    def run(self, p, _filename):
+        if p.debug:
+            logging.basicConfig(level=logging.DEBUG)
+        else:
+            logging.basicConfig(level=logging.ERROR)
+        print('running ' + os.path.basename(_filename))
+        np.random.seed(p.seed)
+
+    @run.params
+    def run(self, ps):
+        ps.add_default('random number seed', seed=1)
+        ps.add_default('enable debug messages', debug=False)
+
+    def invoke(self, action, **kwargs):
+        action = getattr(self, action)
+        return action(action.all_params.set(**kwargs))
+
+    def main(self):
+        action, p = parse_args(self, default='run')
+        return action(p)
+
+
 class Benchmark(object):
     def __init__(self):
         self.parameters = ParameterSet()
@@ -203,15 +397,15 @@ class Benchmark(object):
 
         if p.backend == 'nengo_spinnaker':
             try:
-                _ = model.config[nengo.Node].function_of_time
+                _ = _model.config[nengo.Node].function_of_time
             except AttributeError:
                 import nengo_spinnaker
-                nengo_spinnaker.add_spinnaker_params(model.config)
-            for node in model.all_nodes:
+                nengo_spinnaker.add_spinnaker_params(_model.config)
+            for node in _model.all_nodes:
                 if (node.size_in == 0 and
                     node.size_out > 0 and
                     callable(node.output)):
-                        model.config[node].function_of_time = True
+                        _model.config[node].function_of_time = True
 
         if p.save_figs or p.show_figs:
             plt = matplotlib.pyplot
@@ -283,7 +477,7 @@ class Benchmark(object):
         if allow_cmdline and len(kwargs) == 0:
             return parse_args(self, default='run_model')
         else:
-            return self._run_model.params.set(**kwargs)
+            return self._run_model.all_params.set(**kwargs)
 
     def run(self, **kwargs):
         action, p = self.process_args(**kwargs)

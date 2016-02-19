@@ -37,9 +37,10 @@ class ParameterSet(MutableMapping):
         super(ParameterSet, self).__setattr__('params', {})
 
     def add_parameter(self, param):
-        if param.name in self.params:
-            raise ValueError(
-                "Parameter {0} already exists.".format(param.name))
+        # FIXME
+        # if param.name in self.params:
+            # raise ValueError(
+                # "Parameter {0} already exists.".format(param.name))
         self.params[param.name] = param
 
     def add_parameter_set(self, parameter_set):
