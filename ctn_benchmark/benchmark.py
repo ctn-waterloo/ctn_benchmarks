@@ -223,11 +223,11 @@ class Benchmark2(object):
     def save_figs(self, p, _filename, _figs):
         for i in plt.get_fignums():
             fig = plt.figure(i)
-            fig.savefig(_filename + p.ext, dpi=p.dpi)
+            fig.savefig(_filename + '-' + str(i) + p.ext, dpi=p.dpi)
 
     @save_figs.params
     def save_figs(self, ps):
-        ps.add_default("File extension of saved figures.", fig_ext='.png')
+        ps.add_default("File extension of saved figures.", ext='.png')
         ps.add_default("Resolution of saved figures.", dpi=300)
 
     @Action
