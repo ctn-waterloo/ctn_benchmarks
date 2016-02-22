@@ -130,7 +130,7 @@ def parse_args(action_class, default=None, argv=None):
 
     args = parser.parse_args(args=argv)
     p = getattr(action_class, args.action).all_params
-    for k in p:
+    for k in p.flatten():
         p[k] = getattr(args, k)
     return getattr(action_class, args.action), p
 

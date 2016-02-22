@@ -54,13 +54,25 @@ class ParameterSet(MutableMapping):
         self.add_parameter(Parameter(k, description, v, param_type=param_type))
 
     def __getitem__(self, key):
-        return self.params[key].value
+        split = key.split('.', 1)
+        if key in self.params or len(split) <= 1:
+            return self.params[key].value
+        else:
+            return self.params[split[0]].value[split[1]]
 
     def __setitem__(self, key, value):
-        self.params[key].value = value
+        split = key.split('.', 1)
+        if key in self.params or len(split) <= 1:
+            self.params[key].value = value
+        else:
+            self.params[split[0]].value[split[1]] = value
 
     def __delitem__(self, key):
-        self.params[key].reset()
+        split = key.split('.', 1)
+        if key in self.params or len(split) <= 1:
+            self.params[key].reset()
+        else:
+            del self.params[split[0]].value[split[1]]
 
     def __len__(self):
         return len(self.params)
@@ -78,20 +90,33 @@ class ParameterSet(MutableMapping):
         for k, v in kwargs.items():
             self[k] = v
 
+    def flatten(self):
+        flat = ParameterSet()
+        for k, v in self.params.items():
+            if v.param_type is ParameterSet:
+                for p in v.value.params.values():
+                    flat.params[v.name + '.' + p.name] = p
+            else:
+                flat.params[k] = v
+        return flat
 
-def to_argparser(parameter_set, parser=None):
+
+def to_argparser(parameter_set, parser=None, prefix=''):
     if parser is None:
         parser = argparse.ArgumentParser(add_help=False)
     for v in parameter_set.params.values():
         if v.default is True:
             parser.add_argument(
-                '--no_' + v.name, action='store_false', dest=v.name,
+                '--no_' + prefix + v.name, action='store_false', dest=v.name,
                 help=v.description)
         elif v.default is False:
             parser.add_argument(
-                '--' + v.name, action='store_true', help=v.description)
+                '--' + prefix + v.name, action='store_true',
+                help=v.description)
+        elif v.param_type is ParameterSet:
+            to_argparser(v.default, parser=parser, prefix=v.name + '.')
         else:
             parser.add_argument(
-                '--' + v.name, type=v.param_type, default=v.default,
+                '--' + prefix + v.name, type=v.param_type, default=v.default,
                 help=v.description)
     return parser

@@ -100,6 +100,25 @@ class TestParameterSet(object):
         with pytest.raises(KeyError):
             ps.set(nonexistent=3)
 
+    def test_dict_keys_are_hierarchical(self, ps):
+        ps.add_default("root", root=parameters.ParameterSet())
+        ps.root.add_default("leaf", leaf=2)
+        ps['root.leaf'] = 3
+        assert ps['root.leaf'] == 3
+        del ps['root.leaf']
+        assert ps['root.leaf'] == 2
+
+    def test_provides_flattened_version(self, ps):
+        ps.add_default("foo", foo=1)
+        ps.add_default("root", root=parameters.ParameterSet())
+        ps.root.add_default("leaf", leaf=2)
+        flat = ps.flatten()
+        print flat
+        assert 'foo' in flat
+        assert flat['foo'] == 1
+        assert 'root.leaf' in flat
+        assert flat['root.leaf'] == 2
+
 
 class TestArgumentParserConversion(object):
     @pytest.fixture()
