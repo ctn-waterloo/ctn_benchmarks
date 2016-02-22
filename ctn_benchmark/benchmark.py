@@ -114,25 +114,24 @@ def parse_args(action_class, default=None, argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    # TODO provide useful description to parser
+    # TODO provide useful description and helpful help to parser
     parser = argparse.ArgumentParser()
-    action_parsers = parser.add_subparsers(dest='action')
-    actions = list(gather_actions(action_class))
+    actions = {k: v for k, v in gather_actions(action_class)}
 
-    help_flag = '-h' in argv or '--help' in argv
-    if default is not None and not help_flag:
-        if len(argv) < 1 or argv[0] not in [a[0] for a in actions]:
-            argv.insert(0, default)
-
-    for attr_name, attr in actions:
-        action_parser = action_parsers.add_parser(attr_name)
-        to_argparser(attr.all_params, action_parser)
-
+    parser.add_argument('actions', nargs='*', default=default)
+    parser.add_argument('subargs', nargs=argparse.REMAINDER)
     args = parser.parse_args(args=argv)
-    p = getattr(action_class, args.action).all_params
+
+    p = ParameterSet()
+    for a in args.actions:
+        p.add_parameter_set(getattr(action_class, a).all_params)
+
+    subparser = to_argparser(p)
+    subargs = subparser.parse_args(args=args.subargs)
+
     for k in p.flatten():
-        p[k] = getattr(args, k)
-    return getattr(action_class, args.action), p
+        p[k] = getattr(subargs, k)
+    return [getattr(action_class, a) for a in args.actions], p
 
 
 class Benchmark2(object):
@@ -264,8 +263,10 @@ class Benchmark2(object):
         return action(action.all_params.set(**kwargs))
 
     def main(self):
-        action, p = parse_args(self, default='run')
-        return action(p)
+        actions, p = parse_args(self, default=['run'])
+        for a in actions:
+            result = a(p)
+        return result
 
 
 class NengoBenchmark(Benchmark2):
@@ -504,13 +505,15 @@ class Benchmark(object):
 
     def process_args(self, allow_cmdline=True, **kwargs):
         if allow_cmdline and len(kwargs) == 0:
-            return parse_args(self, default='run_model')
+            return parse_args(self, default=['run_model'])
         else:
-            return self._run_model.all_params.set(**kwargs)
+            return self.run_model.all_params.set(**kwargs)
 
     def run(self, **kwargs):
-        action, p = self.process_args(**kwargs)
-        return action(p)
+        actions, p = self.process_args(**kwargs)
+        for a in actions:
+            result = a(p)
+        return result
 
     def make_model(self, **kwargs):
         return self._model(self.process_args(allow_cmdline=False, **kwargs)[1])

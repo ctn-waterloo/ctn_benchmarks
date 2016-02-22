@@ -103,7 +103,7 @@ class ParameterSet(MutableMapping):
 
 def to_argparser(parameter_set, parser=None, prefix=''):
     if parser is None:
-        parser = argparse.ArgumentParser(add_help=False)
+        parser = argparse.ArgumentParser()
     for v in parameter_set.params.values():
         if v.default is True:
             parser.add_argument(
