@@ -11,7 +11,7 @@ import numpy as np
 
 import ctn_benchmark
 
-class CommunicationChannel(ctn_benchmark.benchmark.Benchmark2):
+class CommunicationChannel(ctn_benchmark.benchmark.NengoBenchmark):
     def model_params(self, ps):
         ps.add_default('number of dimensions', D=2)
         ps.add_default('number of layers', L=2)
@@ -52,9 +52,9 @@ class CommunicationChannel(ctn_benchmark.benchmark.Benchmark2):
         rmse = np.sqrt(np.mean(sim.data[self.probes['pOutput']] - ideal)**2)
         return dict(rmse=rmse, ideal=ideal)
 
-    def plot(self, p, sim, results):
-        plt.plot(sim.trange(), sim.data[self.probes['pOutput']])
-        plt.plot(sim.trange(), results['ideal'])
+    def plot(self, p, results):
+        plt.plot(self.sim.trange(), self.sim.data[self.probes['pOutput']])
+        plt.plot(self.sim.trange(), results['ideal'])
         plt.ylim(-1, 1)
 
 

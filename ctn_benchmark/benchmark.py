@@ -138,9 +138,141 @@ def parse_args(action_class, default=None, argv=None):
 class Benchmark2(object):
     def __init__(self):
         self.hidden_params = ['data_dir', 'debug']
-        self.probes = {}
         self.start_time = None
         self.sim_speed = None
+
+    def process(self, p):
+        raise NotImplementedError()
+
+    def process_params(self, ps):
+        pass
+
+    @Action
+    def _process(self, p):
+        self.start_time = time.time()
+        return self.process(p)
+
+    @_process.params
+    def _process(self, ps):
+        self.process_params(ps)
+
+    def plot(self, p, results):
+        pass
+
+    def plot_params(self, ps):
+        pass
+
+    @Action
+    def _plot(self, p, _process):
+        self.plot(p, _process)
+
+    @_plot.params
+    def _plot(self, ps):
+        self.plot_params(ps)
+
+    def record_speed(self, t):
+        now = time.time()
+        self.sim_speed = t / (now - self.start_time)
+
+    @Action
+    def _filename(self, p):
+        name = self.__class__.__name__
+        uid = np.random.randint(0x7FFFFFFF)
+        filename = name + '#' + time.strftime('%Y%m%d-%H%M%S')+('-%08x' % uid)
+
+        if not os.path.exists(p.data_dir):
+            os.mkdir(p.data_dir)
+
+        return os.path.join(p.data_dir, filename)
+
+    @_filename.params
+    def _filename(self, ps):
+        ps.add_default('data directory', data_dir='data')
+
+    @Action
+    def _text(self, p, _process):
+        text = []
+        for k, v in sorted(_process.items()):
+            text.append('%s = %s' % (k, repr(v)))
+        return text
+
+    @Action
+    def _args_text(self, p):
+        args_text = []
+        for k in p:
+            if k not in self.hidden_params:
+                args_text.append('_%s = %r' % (k, getattr(p, k)))
+        return args_text
+
+    @Action
+    def _figs(self, p, _filename, _text, _args_text, _plot):
+        for i in plt.get_fignums():
+            fig = plt.figure(i)
+
+            if p.overlay:
+                fig.suptitle(
+                    os.path.basename(_filename) +'\n' + '\n'.join(_text),
+                    fontsize=8)
+                fig.text(0.13, 0.12, '\n'.join(_args_text))
+
+    @_figs.params
+    def _figs(self, ps):
+        ps.add_default('overlay on figures', overlay=True)
+
+    @Action
+    def save_figs(self, p, _filename, _figs):
+        for i in plt.get_fignums():
+            fig = plt.figure(i)
+            fig.savefig(_filename + p.ext, dpi=p.dpi)
+
+    @save_figs.params
+    def save_figs(self, ps):
+        ps.add_default("File extension of saved figures.", fig_ext='.png')
+        ps.add_default("Resolution of saved figures.", dpi=300)
+
+    @Action
+    def show_figs(self, p, _figs):
+        plt.show()
+
+    @Action
+    def run(self, p, _filename, _args_text, _text, _process):
+        text = _args_text + _text
+        text = '\n'.join(text)
+
+        with open(_filename + '.txt', 'w') as f:
+            f.write(text)
+        print(text)
+
+        return _process
+
+    @run.pre
+    def run(self, p, _filename):
+        if p.debug:
+            logging.basicConfig(level=logging.DEBUG)
+        else:
+            logging.basicConfig(level=logging.ERROR)
+        print('running ' + os.path.basename(_filename))
+        np.random.seed(p.seed)
+
+    @run.params
+    def run(self, ps):
+        ps.add_default('random number seed', seed=1)
+        ps.add_default('enable debug messages', debug=False)
+
+    def invoke(self, action, **kwargs):
+        action = getattr(self, action)
+        return action(action.all_params.set(**kwargs))
+
+    def main(self):
+        action, p = parse_args(self, default='run')
+        return action(p)
+
+
+class NengoBenchmark(Benchmark2):
+    def __init__(self):
+        super(NengoBenchmark, self).__init__()
+        self.probes = {}
+        self.sim = None
 
     def add_probes(self, **kwargs):
         self.probes.update(kwargs)
@@ -177,24 +309,6 @@ class Benchmark2(object):
     def _evaluate(self, ps):
         self.evaluate_params(ps)
 
-    def record_speed(self, t):
-        now = time.time()
-        self.sim_speed = t / (now - self.start_time)
-
-    def plot(self, p, sim, results):
-        pass
-
-    def plot_params(self, ps):
-        pass
-
-    @Action
-    def _plot(self, p, _sim, _evaluate):
-        return self.plot(p, _sim, _evaluate)
-
-    @_plot.params
-    def _plot(self, ps):
-        self.plot_params(ps)
-
     @Action
     def _sim(self, p, _model):
         module = importlib.import_module(p.backend)
@@ -211,42 +325,13 @@ class Benchmark2(object):
                         callable(node.output)):
                     _model.config[node].function_of_time = True
 
-        return Simulator(_model, dt=p.dt)
+        self.sim = Simulator(_model, dt=p.dt)
+        return self.sim
 
     @_sim.params
     def _sim(self, ps):
         ps.add_default('backend to use', backend='nengo')
         ps.add_default('time step', dt=0.001)
-
-    @Action
-    def _filename(self, p):
-        name = self.__class__.__name__
-        uid = np.random.randint(0x7FFFFFFF)
-        filename = name + '#' + time.strftime('%Y%m%d-%H%M%S')+('-%08x' % uid)
-
-        if not os.path.exists(p.data_dir):
-            os.mkdir(p.data_dir)
-
-        return os.path.join(p.data_dir, filename)
-
-    @_filename.params
-    def _filename(self, ps):
-        ps.add_default('data directory', data_dir='data')
-
-    @Action
-    def _text(self, p, _evaluate):
-        text = []
-        for k, v in sorted(_evaluate.items()):
-            text.append('%s = %s' % (k, repr(v)))
-        return text
-
-    @Action
-    def _args_text(self, p):
-        args_text = []
-        for k in p:
-            if k not in self.hidden_params:
-                args_text.append('_%s = %r' % (k, getattr(p, k)))
-        return args_text
 
     @Action
     def gui(self, p, _model):
@@ -257,75 +342,19 @@ class Benchmark2(object):
             allow_file_change=False).start()
 
     @Action
-    def _figs(self, p, _filename, _text, _args_text, _plot):
-        for i in plt.get_fignums():
-            fig = plt.figure(i)
-
-            if p.overlay:
-                fig.suptitle(
-                    os.path.basename(_filename) +'\n' + '\n'.join(_text),
-                    fontsize=8)
-                fig.text(0.13, 0.12, '\n'.join(_args_text))
-
-    @_figs.params
-    def _figs(self, ps):
-        ps.add_default('overlay on figures', overlay=True)
-
-    @Action
-    def save_figs(self, p, _filename, _figs):
-        for i in plt.get_fignums():
-            fig = plt.figure(i)
-            fig.savefig(_filename + p.ext, dpi=p.dpi)
-
-    @save_figs.params
-    def save_figs(self, ps):
-        ps.add_default("File extension of saved figures.", fig_ext='.png')
-        ps.add_default("Resolution of saved figures.", dpi=300)
-
-    @Action
-    def show_figs(self, p, _figs):
-        plt.show()
-
-    @Action
-    def save_raw(self, p, _filename, _sim, _evaluate):
+    def save_raw(self, p, _filename, _sim, _process):
         db = shelve.open(_filename + '.db')
         db['trange'] = _sim.trange()
         for k, v in self.probes:
             db[k] = _sim.data[v]
         db.close()
 
-    @Action
-    def run(self, p, _filename, _args_text, _text, _evaluate):
-        text = _args_text + _text
-        text = '\n'.join(text)
+    def process(self, p):
+        return self.evaluate(p, self._sim(p))
 
-        with open(_filename + '.txt', 'w') as f:
-            f.write(text)
-        print(text)
-
-        return _evaluate
-
-    @run.pre
-    def run(self, p, _filename):
-        if p.debug:
-            logging.basicConfig(level=logging.DEBUG)
-        else:
-            logging.basicConfig(level=logging.ERROR)
-        print('running ' + os.path.basename(_filename))
-        np.random.seed(p.seed)
-
-    @run.params
-    def run(self, ps):
-        ps.add_default('random number seed', seed=1)
-        ps.add_default('enable debug messages', debug=False)
-
-    def invoke(self, action, **kwargs):
-        action = getattr(self, action)
-        return action(action.all_params.set(**kwargs))
-
-    def main(self):
-        action, p = parse_args(self, default='run')
-        return action(p)
+    def process_params(self, ps):
+        ps.add_parameter_set(self._sim.all_params)
+        self.evaluate_params(ps)
 
 
 class Benchmark(object):
