@@ -299,18 +299,6 @@ class NengoBenchmark(Benchmark2):
         pass
 
     @Action
-    def _evaluate(self, p, _sim):
-        self.start_time = time.time()
-        results = self.evaluate(p, _sim)
-        if hasattr(_sim, 'close'):
-            _sim.close()
-        return results
-
-    @_evaluate.params
-    def _evaluate(self, ps):
-        self.evaluate_params(ps)
-
-    @Action
     def _sim(self, p, _model):
         module = importlib.import_module(p.backend)
         Simulator = module.Simulator
