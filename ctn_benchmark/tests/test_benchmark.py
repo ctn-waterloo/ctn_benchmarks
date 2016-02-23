@@ -130,21 +130,24 @@ class TestParseArgs(object):
             ps.add_default("foo", foo=42)
 
     def test_invoke_action(self):
-        action, p = benchmark.parse_args(
+        actions, p = benchmark.parse_args(
             self.ActionClass(), argv=['dummy_action'])
-        assert action.name == 'dummy_action'
+        assert len(actions) == 1
+        assert actions[0].name == 'dummy_action'
         assert p.foo == 42
 
     def test_set_parameter(self):
-        action, p = benchmark.parse_args(
+        actions, p = benchmark.parse_args(
             self.ActionClass(), argv=['dummy_action', '--foo', '23'])
-        assert action.name == 'dummy_action'
+        assert len(actions) == 1
+        assert actions[0].name == 'dummy_action'
         assert p.foo == 23
 
     def test_invoke_default(self):
-        action, p = benchmark.parse_args(
-            self.ActionClass(), default='dummy_action', argv=[])
-        assert action.name == 'dummy_action'
+        actions, p = benchmark.parse_args(
+            self.ActionClass(), default=['dummy_action'], argv=[])
+        assert len(actions) == 1
+        assert actions[0].name == 'dummy_action'
         assert p.foo == 42
 
         action, p = benchmark.parse_args(

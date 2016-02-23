@@ -60,12 +60,12 @@ class _ActionInvoker(object):
     def all_params(self):
         ps = ParameterSet()
         for dependency in self.get_dependencies(self.action.f_action).values():
-            ps.add_parameter_set(dependency.all_params)
+            ps.merge_parameter_set(dependency.all_params)
         for dependency in self.get_dependencies(self.action.f_pre).values():
-            ps.add_parameter_set(dependency.all_params)
+            ps.merge_parameter_set(dependency.all_params)
         for dependency in self.get_dependencies(self.action.f_post).values():
-            ps.add_parameter_set(dependency.all_params)
-        ps.add_parameter_set(self.params)
+            ps.merge_parameter_set(dependency.all_params)
+        ps.merge_parameter_set(self.params)
         return ps
 
 
@@ -115,23 +115,21 @@ def parse_args(action_class, default=None, argv=None):
         argv = sys.argv[1:]
 
     # TODO provide useful description and helpful help to parser
-    parser = argparse.ArgumentParser()
-    actions = {k: v for k, v in gather_actions(action_class)}
-
-    parser.add_argument('actions', nargs='*', default=default)
-    parser.add_argument('subargs', nargs=argparse.REMAINDER)
-    args = parser.parse_args(args=argv)
+    if argv[0].startswith('-'):
+        args_actions = default.split(',')
+    else:
+        args_actions = argv.pop(0).split(',')
 
     p = ParameterSet()
-    for a in args.actions:
-        p.add_parameter_set(getattr(action_class, a).all_params)
+    for a in args_actions:
+        p.merge_parameter_set(getattr(action_class, a).all_params)
 
-    subparser = to_argparser(p)
-    subargs = subparser.parse_args(args=args.subargs)
+    parser = to_argparser(p)
+    args = parser.parse_args(args=argv)
 
     for k in p.flatten():
-        p[k] = getattr(subargs, k)
-    return [getattr(action_class, a) for a in args.actions], p
+        p[k] = getattr(args, k)
+    return [getattr(action_class, a) for a in args_actions], p
 
 
 class Benchmark2(object):
@@ -263,7 +261,7 @@ class Benchmark2(object):
         return action(action.all_params.set(**kwargs))
 
     def main(self):
-        actions, p = parse_args(self, default=['run'])
+        actions, p = parse_args(self, default='run')
         for a in actions:
             result = a(p)
         return result
@@ -342,7 +340,7 @@ class NengoBenchmark(Benchmark2):
         return self.evaluate(p, self._sim(p))
 
     def process_params(self, ps):
-        ps.add_parameter_set(self._sim.all_params)
+        ps.merge_parameter_set(self._sim.all_params)
         self.evaluate_params(ps)
 
 
@@ -398,7 +396,7 @@ class Benchmark(object):
 
     @_model.params
     def _model(self, ps):
-        ps.add_parameter_set(self.parameters)
+        ps.merge_parameter_set(self.parameters)
 
     @Action
     def gui(self, p, _model):
@@ -493,7 +491,7 @@ class Benchmark(object):
 
     def process_args(self, allow_cmdline=True, **kwargs):
         if allow_cmdline and len(kwargs) == 0:
-            return parse_args(self, default=['run_model'])
+            return parse_args(self, default='run_model')
         else:
             return self.run_model.all_params.set(**kwargs)
 
