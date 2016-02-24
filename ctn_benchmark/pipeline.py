@@ -53,6 +53,9 @@ class Connector(object):
 class Step(object):
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
+            if not hasattr(self, k) or not isinstance(
+                    getattr(self, k), _ConnectionInfo):
+                raise InvalidConnectionError("Must connect to Connector.")
             setattr(self, k, v)
 
     def process(self):

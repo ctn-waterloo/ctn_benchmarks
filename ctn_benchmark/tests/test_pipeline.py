@@ -81,5 +81,9 @@ def test_explicit_reconnection_possible():
     del sq.inp
     _ = Producer() | sq
 
+def test_raise_error_on_invalid_connection_in_constructor():
+    with pytest.raises(pipeline.InvalidConnectionError):
+        Square(nonexistent=Producer())
+
 def test_mapped_square():
     assert list(Producer() | MappedSquare()) == [0, 1, 4]
