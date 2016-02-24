@@ -100,6 +100,40 @@ class MappedStep(Step):
         raise NotImplementedError()
 
 
+class Tee(Step):
+    default = Connector('default')
+
+    def __init__(self, **kwargs):
+        super(Tee, self).__init__(**kwargs)
+        self._cached = []
+        self._iter = None
+
+    def process(self):
+        return iter(self.default)
+
+    class TeeIter(object):
+        def __init__(self, tee):
+            super(Tee.TeeIter, self).__init__()
+            self.tee = tee
+            self.i = 0
+
+        def __iter__(self):
+            return self
+
+        def next(self):
+            while self.i >= len(self.tee._cached):
+                a = self.tee._iter.next()
+                self.tee._cached.append(a)
+            item = self.tee._cached[self.i]
+            self.i += 1
+            return item
+
+    def __iter__(self):
+        if self._iter is None:
+            self._iter = super(Tee, self).__iter__()
+        return self.TeeIter(self)
+
+
 class ParametrizedMixin(object):
     def __init__(self, **kwargs):
         super(ParametrizedMixin, self).__init__(**kwargs)

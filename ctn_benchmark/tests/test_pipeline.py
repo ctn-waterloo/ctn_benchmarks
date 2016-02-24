@@ -131,3 +131,10 @@ def test_setting_pipeline_params():
     ps.increment = 2
     pipeline.set_params(pline, ps)
     assert list(pline) == [18, 27, 36]
+
+def test_tee():
+    prod = Producer() | pipeline.Tee()
+    p1 = prod | Increment()
+    p2 = prod | Square()
+    assert list(p1) == [1, 2, 3]
+    assert list(p2) == [0, 1, 4]
