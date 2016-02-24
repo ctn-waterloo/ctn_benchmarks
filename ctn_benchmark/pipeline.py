@@ -27,6 +27,9 @@ class _ConnectionInfo(object):
                 " want to alter a connection.".format(self.name))
         self._pre = value
 
+    def __getattr__(self, name):
+        return getattr(self.pre, name)
+
 
 class Connector(object):
     def __init__(self, name):
@@ -52,6 +55,7 @@ class Connector(object):
 
 class Step(object):
     def __init__(self, **kwargs):
+        super(Step, self).__init__()
         for k, v in kwargs.items():
             if not hasattr(self, k) or not isinstance(
                     getattr(self, k), _ConnectionInfo):
@@ -82,9 +86,8 @@ class Step(object):
 
     @property
     def connectors(self):
-        return [getattr(self, c) for c in dir(self)
-                if c != 'connectors' and isinstance(
-                    getattr(self, c), _ConnectionInfo)]
+        return [getattr(self, name) for name, c in vars(self.__class__).items()
+                if isinstance(c, Connector)]
 
 
 class MappedStep(Step):
@@ -95,6 +98,42 @@ class MappedStep(Step):
 
     def process_item(self, **kwargs):
         raise NotImplementedError()
+
+
+class ParametrizedMixin(object):
+    def __init__(self, **kwargs):
+        super(ParametrizedMixin, self).__init__(**kwargs)
+        self.p = parameters.ParameterSet()
+        self.params()
+
+    def params(self):
+        pass
+
+
+# TODO lots of shared code in next two functions
+def all_params(pipeline):
+    ps = parameters.ParameterSet()
+    steps = [pipeline]
+    while len(steps) > 0:
+        s = steps.pop()
+        if hasattr(s, 'p'):
+            ps.merge_parameter_set(s.p)
+        steps.extend(c.pre for c in s.connectors)
+    return ps
+
+
+def set_params(pipeline, ps):
+    steps = [pipeline]
+    while len(steps) > 0:
+        s = steps.pop()
+        if hasattr(s, 'p'):
+            # TODO refactor and make this a method of parameter set
+            for k, v in ps.flatten().items():
+                if k in s.p:
+                    s.p[k] = v
+        steps.extend(c.pre for c in s.connectors)
+    return ps
+
 
 
 class ConnectionError(ValueError):

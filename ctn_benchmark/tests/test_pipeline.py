@@ -33,6 +33,26 @@ class Multiply(pipeline.Step):
         return (a * b for a, b in zip(self.a, self.b))
 
 
+class Parametrized(pipeline.Step, pipeline.ParametrizedMixin):
+    inp = pipeline.Connector('inp')
+
+    def process(self):
+        return (i * self.p.factor for i in self.inp)
+
+    def params(self):
+        self.p.add_default("factor", factor=2)
+
+
+class Increment(pipeline.Step, pipeline.ParametrizedMixin):
+    inp = pipeline.Connector('inp')
+
+    def process(self):
+        return (i + self.p.increment for i in self.inp)
+
+    def params(self):
+        self.p.add_default("increment", increment=1)
+
+
 class Consumer(pipeline.Step):
     inp = pipeline.Connector('inp')
 
@@ -87,3 +107,27 @@ def test_raise_error_on_invalid_connection_in_constructor():
 
 def test_mapped_square():
     assert list(Producer() | MappedSquare()) == [0, 1, 4]
+
+def test_parametrized():
+    assert list(Producer() | Parametrized()) == [0, 2, 4]
+
+def test_change_parameter():
+    pline = Producer() | Parametrized() | Parametrized()
+    pline.p.factor = 3
+    pline.inp.p.factor = 4
+    assert list(pline) == [0, 12, 24]
+
+def test_all_params():
+    pline = Producer() | Increment() | Parametrized() | Parametrized()
+
+    assert len(pipeline.all_params(pline)) == 2
+    assert 'factor' in pipeline.all_params(pline)
+    assert 'increment' in pipeline.all_params(pline)
+
+def test_setting_pipeline_params():
+    pline = Producer() | Increment() | Parametrized() | Parametrized()
+    ps = pipeline.all_params(pline)
+    ps.factor = 3
+    ps.increment = 2
+    pipeline.set_params(pline, ps)
+    assert list(pline) == [18, 27, 36]
