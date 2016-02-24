@@ -17,6 +17,14 @@ class Square(pipeline.Step):
         return (i * i for i in self.inp)
 
 
+class MappedSquare(pipeline.MappedStep):
+    inp = pipeline.Connector('inp')
+
+    def process_item(self, inp, **kwargs):
+        assert len(kwargs) == 0
+        return inp * inp
+
+
 class Multiply(pipeline.Step):
     a = pipeline.Connector('a')
     b = pipeline.Connector('b')
@@ -72,3 +80,6 @@ def test_explicit_reconnection_possible():
     _ = Producer() | sq
     del sq.inp
     _ = Producer() | sq
+
+def test_mapped_square():
+    assert list(Producer() | MappedSquare()) == [0, 1, 4]

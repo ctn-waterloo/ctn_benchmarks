@@ -63,13 +63,10 @@ class Step(object):
 
     def __or__(self, other):
         if isinstance(other, Step):
-            connectors = [
-                c for c in dir(other) if isinstance(
-                    getattr(other, c), _ConnectionInfo)]
-            if len(connectors) <= 0:
+            if len(other.connectors) <= 0:
                 raise InvalidConnectionError("Target has no connectors.")
-            elif len(connectors) == 1:
-                other = getattr(other, connectors[0])
+            elif len(other.connectors) == 1:
+                other = other.connectors[0]
             else:
                 raise InvalidConnectionError(
                     "Target has more than one connector.")
@@ -79,6 +76,22 @@ class Step(object):
 
         other.pre = self
         return other.post
+
+    @property
+    def connectors(self):
+        return [getattr(self, c) for c in dir(self)
+                if c != 'connectors' and isinstance(
+                    getattr(self, c), _ConnectionInfo)]
+
+
+class MappedStep(Step):
+    def process(self):
+        for items in zip(*self.connectors):
+            yield self.process_item(
+                **{k.name: v for k, v in zip(self.connectors, items)})
+
+    def process_item(self, **kwargs):
+        raise NotImplementedError()
 
 
 class ConnectionError(ValueError):
