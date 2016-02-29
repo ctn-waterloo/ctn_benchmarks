@@ -2,7 +2,10 @@
 
 from __future__ import absolute_import, print_function
 
+import logging
 import sys
+
+import numpy as np
 
 from ctn_benchmark import parameters, procstep
 from ctn_benchmark.common_steps import (
@@ -31,6 +34,20 @@ class Pipeline(object):
             Last processing step of the action.
         """
         self.actions[name] = step
+
+    def setup(self, p):
+        """To be called before the first action is invoked.
+
+        Parameters
+        ----------
+        p : :class:`parameters.ParameterSet`
+            Parameters.
+        """
+        pass
+
+    def setup_params(self, p):
+        """Defines setup parameters."""
+        pass
 
     def invoke_action(self, name):
         """Invokes the necessary processing steps in a pipeline for an action.
@@ -62,8 +79,8 @@ class Pipeline(object):
         actions, p = self.parse_args(argv)
         for a in actions:
             procstep.set_params(self.actions[a], p)
+        self.setup(p)
         return [self.invoke_action(a) for a in actions]
-
 
     def parse_args(self, argv=None):
         if argv is None:
@@ -76,6 +93,7 @@ class Pipeline(object):
             args_actions = argv.pop(0).split(',')
 
         p = parameters.ParameterSet()
+        self.setup_params(p)
         for a in args_actions:
             p.merge_parameter_set(procstep.all_params(self.actions[a]))
 
@@ -184,6 +202,17 @@ class NengoPipeline(EvaluationAndPlottingPipeline):
 
     def add_probes(self, **kwargs):
         self.probes.update(kwargs)
+
+    def setup(self, p):
+        if p.debug:
+            logging.basicConfig(level=logging.DEBUG)
+        else:
+            logging.basicConfig(level=logging.ERROR)
+        np.random.seed(p.seed)
+
+    def setup_params(self, p):
+        p.add_default("enable debug messages", debug=False)
+        p.add_default("random number seed", seed=1)
 
     def model(self, p):
         raise NotImplementedError()
