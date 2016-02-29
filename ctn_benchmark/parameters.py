@@ -87,6 +87,13 @@ class ParameterSet(MutableMapping):
                 flat.params[k] = v
         return flat
 
+    # TODO test
+    def set_from_ps(self, ps):
+        for k, v in ps.flatten().items():
+            if k in self:
+                self[k] = v
+
+    # TODO test
     def __str__(self):
         return '{' + ', '.join(
             repr(k) + ': ' + repr(v) for k, v in self.flatten().items()) + '}'
