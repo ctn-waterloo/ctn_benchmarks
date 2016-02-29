@@ -138,3 +138,8 @@ def test_tee():
     p2 = prod | Square()
     assert list(p1) == [1, 2, 3]
     assert list(p2) == [0, 1, 4]
+
+def test_function_mapped_step():
+    fn = lambda x: 2 * x
+    pline = Producer() | pipeline.FunctionMappedStep(fn)
+    assert list(pline) == [0, 2, 4]
