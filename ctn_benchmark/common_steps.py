@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import nengo
 import numpy as np
 
+from ctn_benchmark import parameters
 from ctn_benchmark.procstep import (
     Connector, MappedStep, ParametrizedMixin, Step)
 
@@ -55,6 +56,26 @@ class DictToTextStep(MappedStep):
         for k, v in sorted(dictionary.items()):
             text.append('%s = %s\n' % (k, repr(v)))
         return ''.join(text)
+
+
+class ParamsToDictStep(Step):
+    """Provides the parameters as dictionary."""
+
+    def __init__(self, **kwargs):
+        super(ParamsToDictStep, self).__init__(**kwargs)
+        self.params = parameters.ParameterSet()
+
+    def process(self):
+        yield dict(self.params.flatten())
+
+
+def AppendTextStep(*args):
+    """Appends texts to each other."""
+    named = {'a' + str(i): a for i, a in enumerate(args)}
+    d = {a: Connector(a) for a in named}
+    d['process_item'] = lambda self, **kwargs: ''.join(
+        kwargs['a' + str(i)] for i in range(len(args)))
+    return type('AppendTextStep', (MappedStep,), d)(**named)
 
 
 class WriteToTextFileStep(MappedStep):

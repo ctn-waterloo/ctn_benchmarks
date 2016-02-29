@@ -9,8 +9,9 @@ import numpy as np
 
 from ctn_benchmark import parameters, procstep
 from ctn_benchmark.common_steps import (
-    BuildNengoSimStep, GenFilenameStep, DictToTextStep, PrintTextStep,
-    SaveAllFigsStep, ShowAllFigsStep, StartNengoGuiStep, WriteToTextFileStep)
+    AppendTextStep, BuildNengoSimStep, GenFilenameStep, DictToTextStep,
+    ParamsToDictStep, PrintTextStep, SaveAllFigsStep, ShowAllFigsStep,
+    StartNengoGuiStep, WriteToTextFileStep)
 
 # TODO unit test
 
@@ -155,11 +156,18 @@ class EvaluationPipeline(FilenamePipeline):
 
     def __init__(self):
         self.evaluate_step = self.create_evaluate_step()
+        self.params_to_dict_step = ParamsToDictStep()
         super(EvaluationPipeline, self).__init__()
+        self.text_step = AppendTextStep(
+            DictToTextStep(dictionary=self.params_to_dict_step),
+            DictToTextStep(dictionary=self.evaluate_step))
         self.add_action('run', WriteToTextFileStep(
-            text=PrintTextStep(text=DictToTextStep(
-                dictionary=self.evaluate_step)),
+            text=PrintTextStep(text=self.text_step),
             filename=self.filename_step))
+
+    def setup(self, p):
+        self.params_to_dict_step.params = p
+        super(EvaluationPipeline, self).setup(p)
 
     def evaluate(self, p, **kwargs):
         raise NotImplementedError()
@@ -204,6 +212,7 @@ class NengoPipeline(EvaluationAndPlottingPipeline):
         self.probes.update(kwargs)
 
     def setup(self, p):
+        super(NengoPipeline, self).setup(p)
         if p.debug:
             logging.basicConfig(level=logging.DEBUG)
         else:
