@@ -10,9 +10,9 @@ import numpy as np
 
 from ctn_benchmark import parameters, procstep
 from ctn_benchmark.common_steps import (
-    AppendTextStep, BuildNengoSimStep, GenFilenameStep, DictToTextStep,
-    ParamsToDictStep, PrintTextStep, SaveAllFigsStep, SaveNengoRawStep,
-    ShowAllFigsStep, StartNengoGuiStep, WriteToTextFileStep)
+    AddFigureOverlayStep, AppendTextStep, BuildNengoSimStep, GenFilenameStep,
+    DictToTextStep, ParamsToDictStep, PrintTextStep, SaveAllFigsStep,
+    SaveNengoRawStep, ShowAllFigsStep, StartNengoGuiStep, WriteToTextFileStep)
 
 # TODO unit test
 
@@ -121,8 +121,8 @@ class PlottingPipeline(FilenamePipeline):
     """Pipeline providing plotting functionality."""
 
     def __init__(self):
-        self.plot_step = self.create_plot_step()
         super(PlottingPipeline, self).__init__()
+        self.plot_step = self.create_plot_step()
         self.add_action('show_figs', ShowAllFigsStep(figs=self.plot_step))
         self.add_action(
             'save_figs',
@@ -158,10 +158,10 @@ class EvaluationPipeline(FilenamePipeline):
     def __init__(self):
         self.evaluate_step = self.create_evaluate_step()
         self.params_to_dict_step = ParamsToDictStep(['data_dir', 'debug'])
-        super(EvaluationPipeline, self).__init__()
         self.text_step = AppendTextStep(
             DictToTextStep(dictionary=self.params_to_dict_step),
             DictToTextStep(dictionary=self.evaluate_step))
+        super(EvaluationPipeline, self).__init__()
         self.add_action('run', WriteToTextFileStep(
             text=PrintTextStep(text=self.text_step),
             filename=self.filename_step))
@@ -202,10 +202,10 @@ class NengoPipeline(EvaluationAndPlottingPipeline):
     """Pipeline for Nengo models."""
 
     def __init__(self):
-        self.probes = {}
         self.model_step = self.create_model_step()
         self.sim_step = BuildNengoSimStep(model=self.model_step)
         super(NengoPipeline, self).__init__()
+        self.probes = {}
         self.add_action('gui', StartNengoGuiStep(model=self.model_step))
         self.save_raw_step = SaveNengoRawStep(
             sim=self.sim_step, run_result=self.evaluate_step,
@@ -253,9 +253,12 @@ class NengoPipeline(EvaluationAndPlottingPipeline):
         raise NotImplementedError()
 
     def create_plot_step(self):
-        return procstep.ParametrizedFunctionMappedStep(
-            self.plot, self.plot_params, data=self.get_data_step(),
-            sim=self.sim_step)
+        return AddFigureOverlayStep(
+            figs=procstep.ParametrizedFunctionMappedStep(
+                self.plot, self.plot_params, data=self.get_data_step(),
+                sim=self.sim_step),
+            title=self.filename_step,
+            text=self.text_step)
 
 
 # TODO This class does not really fit into this file

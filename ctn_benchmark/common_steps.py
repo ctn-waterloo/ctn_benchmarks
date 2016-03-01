@@ -105,6 +105,26 @@ class PrintTextStep(MappedStep):
         return text
 
 
+class AddFigureOverlayStep(MappedStep, ParametrizedMixin):
+    """Adds an overlay with parameters values to figures."""
+
+    figs = Connector('figs')
+    title = Connector('title')
+    text = Connector('text')
+
+    def process_item(self, figs, title, text, **kwargs):
+        if figs is None:
+            figs = (plt.figure(num=i) for i in plt.get_fignums())
+        for fig in figs:
+            fig.suptitle(title)
+            if self.p.overlay:
+                fig.text(0.13, 0.12, text)
+        return figs
+
+    def params(self):
+        self.p.add_default('show overlay on figures', overlay=True)
+
+
 class ShowAllFigsStep(Step):
     """Shows all matplotlib figures."""
 
