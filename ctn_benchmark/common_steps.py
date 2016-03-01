@@ -5,6 +5,7 @@ from __future__ import absolute_import, print_function
 import importlib
 import os
 import os.path
+import shelve
 import time
 
 import matplotlib.pyplot as plt
@@ -168,3 +169,27 @@ class StartNengoGuiStep(MappedStep):
             model=model, filename=self.__class__.__name__,
             locals=dict(model=model), interactive=False,
             allow_file_change=False).start()
+
+
+class SaveNengoRawStep(MappedStep):
+    """Saves raw Nengo simulation data."""
+
+    sim = Connector('sim')
+    run_result = Connector('run_result')
+    filename = Connector('filename')
+
+    def __init__(self, **kwargs):
+        self.probes = {}
+        super(SaveNengoRawStep, self).__init__(**kwargs)
+
+    def add_probes(self, **kwargs):
+        self.probes.update(kwargs)
+
+    def process_item(self, sim, filename, **kwargs):
+        db = shelve.open(filename + '.db')
+        try:
+            db['trange'] = sim.trange()
+            for k, v in self.probes.items():
+                db[k] = sim.data[v]
+        finally:
+            db.close()

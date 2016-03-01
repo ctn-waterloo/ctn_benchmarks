@@ -11,8 +11,8 @@ import numpy as np
 from ctn_benchmark import parameters, procstep
 from ctn_benchmark.common_steps import (
     AppendTextStep, BuildNengoSimStep, GenFilenameStep, DictToTextStep,
-    ParamsToDictStep, PrintTextStep, SaveAllFigsStep, ShowAllFigsStep,
-    StartNengoGuiStep, WriteToTextFileStep)
+    ParamsToDictStep, PrintTextStep, SaveAllFigsStep, SaveNengoRawStep,
+    ShowAllFigsStep, StartNengoGuiStep, WriteToTextFileStep)
 
 # TODO unit test
 
@@ -207,10 +207,15 @@ class NengoPipeline(EvaluationAndPlottingPipeline):
         self.sim_step = BuildNengoSimStep(model=self.model_step)
         super(NengoPipeline, self).__init__()
         self.add_action('gui', StartNengoGuiStep(model=self.model_step))
+        self.save_raw_step = SaveNengoRawStep(
+            sim=self.sim_step, run_result=self.evaluate_step,
+            filename=self.filename_step)
+        self.add_action('save_raw', self.save_raw_step)
         self.defaults = ['run']
 
     def add_probes(self, **kwargs):
-        self.probes.update(kwargs)
+        self.save_raw_step.add_probes(**kwargs)
+        self.probes.update(**kwargs)
 
     def setup(self, p):
         super(NengoPipeline, self).setup(p)
