@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import nengo
 import numpy as np
 
-from ctn_benchmark.pipeline import NengoPipeline
+from ctn_benchmark.pipeline import NengoPipeline, SpeedRecorder
 
 class CommunicationChannel(NengoPipeline):
     def model_params(self, ps):
@@ -42,15 +42,15 @@ class CommunicationChannel(NengoPipeline):
         ps.add_default('simulation time', T=1.0)
 
     def evaluate(self, p, sim):
-        sim.run(p.T)
-        # self.record_speed(p.T)
+        with SpeedRecorder(p.T) as speed_recorder:
+            sim.run(p.T)
 
         ideal = sim.data[self.probes['pInput']]
         for _ in range(p.L):
             ideal = nengo.synapses.filt(ideal, nengo.Lowpass(p.pstc), p.dt)
 
         rmse = np.sqrt(np.mean(sim.data[self.probes['pOutput']] - ideal)**2)
-        return dict(rmse=rmse, ideal=ideal)
+        return dict(rmse=rmse, ideal=ideal, speed=speed_recorder.speed)
 
     def plot(self, p, data, sim):
         plt.plot(sim.trange(), sim.data[self.probes['pOutput']])

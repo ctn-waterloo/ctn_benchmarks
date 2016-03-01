@@ -4,6 +4,7 @@ from __future__ import absolute_import, print_function
 
 import logging
 import sys
+import time
 
 import numpy as np
 
@@ -250,3 +251,28 @@ class NengoPipeline(EvaluationAndPlottingPipeline):
         return procstep.ParametrizedFunctionMappedStep(
             self.plot, self.plot_params, data=self.get_data_step(),
             sim=self.sim_step)
+
+
+# TODO This class does not really fit into this file
+class SpeedRecorder(object):
+    def __init__(self, sim_time):
+        self.start_time = None
+        self.end_time = None
+        self.sim_time = sim_time
+
+    def __enter__(self):
+        self.start_time = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end_time = time.time()
+
+    @property
+    def duration(self):
+        if self.start_time is None or self.end_time is None:
+            return None
+        return self.end_time - self.start_time
+
+    @property
+    def speed(self):
+        return self.sim_time / self.duration
