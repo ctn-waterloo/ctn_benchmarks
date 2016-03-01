@@ -157,7 +157,7 @@ class EvaluationPipeline(FilenamePipeline):
 
     def __init__(self):
         self.evaluate_step = self.create_evaluate_step()
-        self.params_to_dict_step = ParamsToDictStep()
+        self.params_to_dict_step = ParamsToDictStep(['data_dir', 'debug'])
         super(EvaluationPipeline, self).__init__()
         self.text_step = AppendTextStep(
             DictToTextStep(dictionary=self.params_to_dict_step),

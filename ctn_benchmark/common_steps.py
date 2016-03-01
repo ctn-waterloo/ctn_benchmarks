@@ -61,12 +61,16 @@ class DictToTextStep(MappedStep):
 class ParamsToDictStep(Step):
     """Provides the parameters as dictionary."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, hidden_params=None, **kwargs):
         super(ParamsToDictStep, self).__init__(**kwargs)
         self.params = parameters.ParameterSet()
+        if hidden_params is None:
+            hidden_params = []
+        self.hidden_params = hidden_params
 
     def process(self):
-        yield dict(self.params.flatten())
+        yield {k: v for k, v in self.params.flatten().items()
+               if k not in self.hidden_params}
 
 
 def AppendTextStep(*args):
