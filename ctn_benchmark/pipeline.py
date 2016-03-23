@@ -45,7 +45,7 @@ class Pipeline(object):
         p : :class:`parameters.ParameterSet`
             Parameters.
         """
-        pass
+        yield
 
     def setup_params(self, p):
         """Defines setup parameters."""
@@ -84,7 +84,6 @@ class Pipeline(object):
     def run_actions(self, actions, p):
         for a in actions:
             procstep.set_params(self.actions[a], p)
-        self.setup(p)
         return [self.invoke_action(a) for a in actions]
 
     def parse_args(self, argv=None):
@@ -171,7 +170,11 @@ class EvaluationPipeline(FilenamePipeline):
 
     def setup(self, p):
         self.params_to_dict_step.params = p
-        super(EvaluationPipeline, self).setup(p)
+        yield super(EvaluationPipeline, self).setup(p)
+
+    def create_setup_step(self):
+        return procstep.ParametrizedFunctionMappedStep(
+            self.setup, self.setup_params)
 
     def evaluate(self, p, **kwargs):
         raise NotImplementedError()
@@ -181,7 +184,8 @@ class EvaluationPipeline(FilenamePipeline):
 
     def create_evaluate_step(self):
         return procstep.ParametrizedFunctionMappedStep(
-            self.evaluate, self.evaluate_params)
+            self.evaluate, self.evaluate_params,
+            setup=self.create_setup_step())
 
     def create_filename_step(self):
         return GenFilenameStep(
@@ -227,23 +231,21 @@ class NengoPipeline(EvaluationAndPlottingPipeline):
         else:
             logging.basicConfig(level=logging.ERROR)
         np.random.seed(p.seed)
+        yield
 
     def setup_params(self, p):
         p.add_default("enable debug messages", debug=False)
         p.add_default("random number seed", seed=1)
 
-    def model(self, p):
+    def model(self, p, setup, **kwargs):
         raise NotImplementedError()
-
-    def models(self, p):
-        yield self.model(p)
 
     def model_params(self, ps):
         pass
 
     def create_model_step(self):
         return procstep.ParametrizedFunctionMappedStep(
-            self.models, self.model_params)
+            self.model, self.model_params, setup=self.create_setup_step())
 
     def evaluate(self, p, sim, **kwargs):
         raise NotImplementedError()
