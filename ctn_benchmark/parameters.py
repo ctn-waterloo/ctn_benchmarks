@@ -101,7 +101,10 @@ class ParameterSet(MutableMapping):
 
     # TODO test
     def set_from_ps(self, ps):
-        for k, v in ps.flatten().items():
+        self.set_from_dict(ps.flatten())
+
+    def set_from_dict(self, params):
+        for k, v in params.items():
             if k in self:
                 self[k] = v
 
