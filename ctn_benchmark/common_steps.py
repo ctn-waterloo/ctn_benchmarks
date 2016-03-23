@@ -17,6 +17,13 @@ from ctn_benchmark.procstep import (
     Connector, MappedStep, ParametrizedMixin, Step)
 
 
+class GatherStep(Step):
+    items = Connector('items')
+
+    def process(self):
+        yield list(self.items)
+
+
 class GenFilenameStep(MappedStep, ParametrizedMixin):
     """Generates a new filename for each input item.
 
