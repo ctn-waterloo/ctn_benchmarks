@@ -76,7 +76,7 @@ class Pipeline(object):
 
         Returns
         -------
-        List of the results for each action in the order of execution.
+        Dictionary of the results for the actions.
         """
         actions, p = self.parse_args(argv)
         return self.run_actions(actions, p)
@@ -84,7 +84,11 @@ class Pipeline(object):
     def run_actions(self, actions, p):
         for a in actions:
             procstep.set_params(self.actions[a], p)
-        return [self.invoke_action(a) for a in actions]
+        return {a: self.invoke_action(a) for a in actions}
+
+    def run_single_action(self, action, p):
+        procstep.set_params(self.actions[action], p)
+        return self.invoke_action(action)
 
     def parse_args(self, argv=None):
         if argv is None:
