@@ -168,6 +168,7 @@ class EvaluationPipeline(FilenamePipeline):
             DictToTextStep(dictionary=self.params_to_dict_step),
             DictToTextStep(dictionary=self.evaluate_step))
         super(EvaluationPipeline, self).__init__()
+        self.add_action('evaluate', self.evaluate_step)
         self.add_action('run', WriteToTextFileStep(
             text=PrintTextStep(text=self.text_step),
             filename=self.filename_step))
