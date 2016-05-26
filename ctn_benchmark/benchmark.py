@@ -27,7 +27,7 @@ class Benchmark(object):
     def default(self, description, **kwarg):
         if len(kwarg) != 1:
             raise ValueException('Must specify exactly one parameter')
-        k, v = kwarg.items()[0]
+        k, v = list(kwarg.items())[0]
         if k in self.param_names:
             raise ValueException('Cannot redefine parameter "%s"' % k)
         if v is False:
