@@ -19,6 +19,7 @@ class Data(object):
                         exec(text, d)
                     except:
                         continue
+                    del d['__builtins__']
                     self.data.append(d)
 
     def find_outliers(self, measures, cutoff=3.0):
