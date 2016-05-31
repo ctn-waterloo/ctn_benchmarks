@@ -144,7 +144,7 @@ class Benchmark(object):
         if not os.path.exists(p.data_dir):
             os.mkdir(p.data_dir)
 
-        result['filename'] = fn
+        result['filename'] = fn + '.txt'
 
         fn = os.path.join(p.data_dir, fn)
         if p.save_figs:

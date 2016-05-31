@@ -3,14 +3,18 @@ import os
 import numpy as np
 
 class Data(object):
-    def __init__(self, path, label=None):
+    def __init__(self, path, filenames=None, label=None):
         self.path = path
         if label is None:
             label = path
         self.label = label
         self.data = []
         if os.path.exists(path):
-            for fn in os.listdir(path):
+            self.filenames = os.listdir(path)
+            if filenames is not None:
+                self.filenames = set.intersection(set(self.filenames),
+                                                  set(filenames))
+            for fn in self.filenames:
                 if fn.endswith('.txt'):
                     with open(os.path.join(path, fn)) as f:
                         text = f.read()
