@@ -152,6 +152,7 @@ class Benchmark(object):
         with open(fn + '.txt', 'w') as f:
             f.write(text)
         print(text)
+        result['filename'] = fn
 
         if p.save_raw:
             db = shelve.open(fn + '.db')
