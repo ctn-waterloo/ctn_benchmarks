@@ -89,7 +89,7 @@ class SPASequenceRouted(ctn_benchmark.Benchmark):
                  for i in range(len(change_points)-1)]
 
         if plt is not None:
-            plt.plot(times, sim.data[self.probe]
+            plt.plot(times, sim.data[self.probe])
             plt.plot(times[index + 1:], np.where(change!=0,1,0))
 
             for i, peak in enumerate(peaks):
