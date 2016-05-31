@@ -17,8 +17,8 @@ import nengo
 class Benchmark(object):
     def __init__(self):
         self.parser = argparse.ArgumentParser(
-                            description='Nengo benchmark: %s' %
-                                 self.__class__.__name__)
+            description='Nengo benchmark: %s' %
+                        self.__class__.__name__)
         self.param_names = []
         self.hidden_params = []
         self.params()
@@ -109,10 +109,9 @@ class Benchmark(object):
                 import nengo_spinnaker
                 nengo_spinnaker.add_spinnaker_params(model.config)
             for node in model.all_nodes:
-                if (node.size_in == 0 and
-                    node.size_out > 0 and
-                    callable(node.output)):
-                        model.config[node].function_of_time = True
+                if (node.size_in == 0 and node.size_out > 0 and
+                        callable(node.output)):
+                    model.config[node].function_of_time = True
 
         if p.save_figs or p.show_figs:
             plt = matplotlib.pyplot
@@ -134,17 +133,19 @@ class Benchmark(object):
         for k, v in sorted(result.items()):
             text.append('%s = %s' % (k, repr(v)))
 
-
         if plt is not None and not p.hide_overlay:
-            plt.suptitle(fn +'\n' + '\n'.join(text),
+            plt.suptitle(fn + '\n' + '\n'.join(text),
                          fontsize=8)
-            plt.figtext(0.13,0.12,'\n'.join(self.args_text))
+            plt.figtext(0.13, 0.12, '\n'.join(self.args_text))
 
         text = self.args_text + text
         text = '\n'.join(text)
 
         if not os.path.exists(p.data_dir):
             os.mkdir(p.data_dir)
+
+        result['filename'] = fn
+
         fn = os.path.join(p.data_dir, fn)
         if p.save_figs:
             plt.savefig(fn + '.png', dpi=300)
@@ -152,7 +153,6 @@ class Benchmark(object):
         with open(fn + '.txt', 'w') as f:
             f.write(text)
         print(text)
-        result['filename'] = fn
 
         if p.save_raw:
             db = shelve.open(fn + '.db')
