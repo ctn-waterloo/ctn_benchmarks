@@ -17,8 +17,8 @@ import nengo
 class Benchmark(object):
     def __init__(self):
         self.parser = argparse.ArgumentParser(
-                            description='Nengo benchmark: %s' %
-                                 self.__class__.__name__)
+            description='Nengo benchmark: %s' %
+            self.__class__.__name__)
         self.param_names = []
         self.hidden_params = []
         self.params()
@@ -119,7 +119,12 @@ class Benchmark(object):
             plt.figure()
         else:
             plt = None
-        sim = Simulator(model, dt=p.dt)
+
+        if p.backend == 'nengo_ocl' and p.context is not None:
+            sim = Simulator(model, dt=p.dt, context=p.context)
+        else:
+            sim = Simulator(model, dt=p.dt)
+
         self.start_time = time.time()
         self.sim_speed = None
         result = self.evaluate(p, sim, plt)
@@ -133,7 +138,6 @@ class Benchmark(object):
         text = []
         for k, v in sorted(result.items()):
             text.append('%s = %s' % (k, repr(v)))
-
 
         if plt is not None and not p.hide_overlay:
             plt.suptitle(fn +'\n' + '\n'.join(text),
