@@ -129,7 +129,8 @@ class Benchmark(object):
         self.sim_speed = None
         result = self.evaluate(p, sim, plt)
 
-        if p.backend == 'nengo_spinnaker':
+        # if p.backend == 'nengo_spinnaker':
+        if hasattr(sim, 'close'):
             sim.close()
 
         if self.sim_speed is not None and 'sim_speed' not in result:
