@@ -12,7 +12,8 @@ from ctn_benchmark import parameters, procstep
 from ctn_benchmark.common_steps import (
     AddFigureOverlayStep, AppendTextStep, BuildNengoSimStep, GenFilenameStep,
     DictToTextStep, ParamsToDictStep, PrintTextStep, SaveAllFigsStep,
-    SaveNengoRawStep, ShowAllFigsStep, StartNengoGuiStep, WriteToTextFileStep)
+    SaveNengoRawStep, SideEffectStep, ShowAllFigsStep, StartNengoGuiStep,
+    WriteToTextFileStep)
 
 # TODO unit test
 
@@ -169,9 +170,11 @@ class EvaluationPipeline(FilenamePipeline):
             DictToTextStep(dictionary=self.evaluate_step))
         super(EvaluationPipeline, self).__init__()
         self.add_action('evaluate', self.evaluate_step)
-        self.add_action('run', WriteToTextFileStep(
-            text=PrintTextStep(text=self.text_step),
-            filename=self.filename_step))
+        self.add_action('run', SideEffectStep(
+            primary=self.evaluate_step,
+            side_effect=WriteToTextFileStep(
+                text=PrintTextStep(text=self.text_step),
+                filename=self.filename_step)))
 
     def setup(self, p):
         self.params_to_dict_step.params = p

@@ -24,6 +24,15 @@ class GatherStep(Step):
         yield list(self.items)
 
 
+class SideEffectStep(Step):
+    primary = Connector('primary')
+    side_effect = Connector('side_effect')
+
+    def process(self):
+        for p, _ in zip(self.primary, self.side_effect):
+            yield p
+
+
 class GenFilenameStep(MappedStep, ParametrizedMixin):
     """Generates a new filename for each input item.
 
