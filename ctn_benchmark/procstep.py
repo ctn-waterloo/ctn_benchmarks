@@ -138,9 +138,12 @@ class Step(object):
         def __iter__(self):
             return self
 
+        def __next__(self):
+            return self.next()
+
         def next(self):
             while self.i >= len(self.step._cached):
-                a = self.step._iter.next()
+                a = next(self.step._iter)
                 self.step._cached.append(a)
             item = self.step._cached[self.i]
             self.i += 1

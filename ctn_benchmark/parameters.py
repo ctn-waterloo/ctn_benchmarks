@@ -49,7 +49,7 @@ class ParameterSet(MutableMapping):
     def add_default(self, description, param_type=None, **kwargs):
         if len(kwargs) != 1:
             raise ValueError("Must specifiy exactly one parameter.")
-        k, v = kwargs.items()[0]
+        k, v = next(iter(kwargs.items()))
         self.add_parameter(Parameter(k, description, v, param_type=param_type))
 
     def __getitem__(self, key):
