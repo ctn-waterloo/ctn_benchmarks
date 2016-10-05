@@ -17,16 +17,19 @@ class CircularConvolution(ctn_benchmark.Benchmark):
         self.default('time to run simulation', T=0.5)
         self.default('subdimensions', SD=8)
         self.default('post-synaptic time constant', pstc=0.01)
+        self.default('neurons per dimension I/O', n_per_d=50)
+        self.default('neurons per cconv', n_cconv=200)
     def model(self, p):
         model = spa.SPA()
         with model:
-            model.inA = spa.Buffer(p.D, subdimensions=p.SD)
-            model.inB = spa.Buffer(p.D, subdimensions=p.SD)
+            model.inA = spa.Buffer(p.D, subdimensions=p.SD, neurons_per_dimension=p.n_per_d)
+            model.inB = spa.Buffer(p.D, subdimensions=p.SD, neurons_per_dimension=p.n_per_d)
 
-            model.result = spa.Buffer(p.D, subdimensions=p.SD)
+            model.result = spa.Buffer(p.D, subdimensions=p.SD, neurons_per_dimension=p.n_per_d)
 
             model.cortical = spa.Cortical(spa.Actions('result = inA * inB'),
-                                          synapse=p.pstc)
+                                          synapse=p.pstc,
+                                          neurons_cconv=p.n_cconv)
 
             model.input = spa.Input(inA='A', inB='B')
 
@@ -40,9 +43,9 @@ class CircularConvolution(ctn_benchmark.Benchmark):
         sim.run(p.T)
         self.record_speed(p.T)
 
-        ideal = sim.data[self.probe_ideal]
+        ideal = np.array(sim.data[self.probe_ideal])
         for i in range(3):
-            ideal = nengo.synapses.filt(ideal, nengo.Lowpass(p.pstc), p.dt)
+            ideal = nengo.Lowpass(p.pstc).filt(ideal, dt=p.dt, y0=0)
 
 
         if plt is not None:
@@ -50,7 +53,7 @@ class CircularConvolution(ctn_benchmark.Benchmark):
             plt.plot(sim.trange(), ideal)
 
 
-        rmse = np.sqrt(np.mean(sim.data[self.probe] - ideal)**2)
+        rmse = np.sqrt(np.mean((sim.data[self.probe] - ideal)**2))
         return dict(rmse=rmse)
 
 if __name__ == '__main__':
