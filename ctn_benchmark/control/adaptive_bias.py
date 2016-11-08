@@ -6,6 +6,8 @@ import numpy as np
 import ctn_benchmark
 import ctn_benchmark.control as ctrl
 
+import fpga_serial_interface
+
 class ZeroDecoder(nengo.solvers.Solver):
     weights = False
     def __call__(self, A, Y, rng=None, E=None):
@@ -32,7 +34,10 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
         self.default('delay', delay=0.01)
 
     def model(self, p):
-
+        fpga = fpga_serial_interface.serial_fpga("/dev/ttyUSB0", d1=p.D, d2=p.D,
+                        n=p.n_neurons, steps=p.T/p.dt, b=400, k=p.learning_rate, dt=p.dt)
+        fpga.run() #maybe move this somewhere else?
+        
         model = nengo.Network()
         with model:
 
@@ -67,26 +72,23 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
             nengo.Connection(control, minsim, synapse=None)
 
             if p.adapt:
+                #give FPGA x, error (need to set x and err)
+                to_fpga = nengo.Node(lambda t, x: fpga.send(x) ,size_in=p.D*2, 
+                                        size_out=p.D*2, label='to_fpga')
+                nengo.Connection(minsim, to_fpga[:p.D], synapse=None) #x
+                nengo.Connection(control, to_fpga[p.D:], synapse=None) #err; might need a -1
 
+                #get x_hat
+                from_fpga = nengo.Node(lambda t: fpga.recv(), size_out=p.D, label='from_fpga')
+                nengo.Connection(from_fpga, minsim, synapse=p.synapse)
 
-                adapt = nengo.Ensemble(p.n_neurons, dimensions=p.D,
-                                       radius=p.radius, label='adapt')
-                nengo.Connection(minsim, adapt, synapse=None)
-                #adapt_signal = nengo.Node(None, size_in=p.D, label='adapt_signal')
-                #nengo.Connection(adapt_signal, minsim, synapse=None)
-                conn = nengo.Connection(adapt, minsim, synapse=p.synapse,
-                        function=lambda x: [0]*p.D,
-                        solver=ZeroDecoder(),
-                        learning_rule_type=nengo.PES())
-                conn.learning_rule_type.learning_rate *= p.learning_rate
-                nengo.Connection(control, conn.learning_rule, synapse=None,
-                        transform=-1)
 
             signal = ctrl.Signal(p.D, p.period, dt=p.dt, max_freq=p.max_freq, seed=p.seed)
             desired = nengo.Node(signal.value, label='desired')
             nengo.Connection(desired, control[p.D:], synapse=None)
 
             self.p_desired = nengo.Probe(desired, synapse=None)
+            self.p_neurons = nengo.Probe(from_fpga, synapse=None)
             # TODO: why doesn't this probe work on nengo_spinnaker?
             #self.p_q = nengo.Probe(state_node, synapse=None)
             self.p_u = nengo.Probe(control, synapse=None)
@@ -123,6 +125,8 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
             plt.plot(t[offset:], d[:-offset], label='$q_d$')
             #plt.plot(t[offset:], d[offset:])
             plt.plot(t[offset:], q[offset:], label='$q$')
+            # plt.plot(t[offset:], np.array(self.system_control)[offset:,0], label='$control$')
+            # plt.plot(t[offset:], sim.data[self.p_neurons][offset:,0], label='$neurons$')
             plt.legend(loc='upper left')
 
             #plt.plot(np.correlate(d, q, 'full')[len(q):])
