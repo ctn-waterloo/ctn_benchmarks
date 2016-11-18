@@ -16,7 +16,7 @@ import numpy as np
 class serial_fpga(object):
 
     def __init__(self, device, d1=1, d2=1, n=500, steps=1000, 
-                    b=400, k=0.0001, dt=0.001):
+                    b=400, k=0.0001, dt=0.001, file="BUILTIN"):
         #device is a string eg. "/dev/ttyUSB0"
 
         self.ser = serial.Serial(device, 115200, timeout=2)
@@ -25,6 +25,9 @@ class serial_fpga(object):
         #
         self.ser.flushInput()
 
+        self.ser.write(b'root\n') #login
+        self.ser.write(b'source ./init_opencl.sh\n') #setup OpenCL
+
         self.d1 = int(d1) #input dimensio
         self.d2 = int(d2) #output dimension
         self.n = int(n) #number of neurons
@@ -32,11 +35,10 @@ class serial_fpga(object):
         self.b = int(b) #block size
         self.k = k #learning rate
         self.dt = dt #timestep
+        self.file = file #preset neurons in binary file
+
 
     def run(self): #start the simulation
-    
-        self.ser.write(b'root\n') #login
-        self.ser.write(b'source ./init_opencl.sh\n') #setup OpenCL
         
         arg = ['./host_pes -i=' + str(self.steps) + 
                          ' -d1=' + str(self.d1) + 
@@ -45,6 +47,7 @@ class serial_fpga(object):
                          ' -k=' + str(self.k) + 
                          ' -dt=' + str(self.dt) + 
                          ' -b=' + str(self.b) + 
+                         ' -file=' + str(self.file) +
                          ' -o=1\n']
         #run program
         self.ser.write(bytes(arg[0], 'ascii'))
@@ -52,14 +55,12 @@ class serial_fpga(object):
         #Make sure both sides are at the same spot
         while 1:
             data = self.ser.readline()
-            print(data)
             if data == (b'READY\n'):
                 print("WORKING")
                 break
     
 
     def send(self, data):
-        # print("sending")
         byte_data = b'SEND' + struct.pack( '%sf' % len(data), *data.astype('float32'))
         # print(byte_data)
         self.ser.write(byte_data)
@@ -69,19 +70,22 @@ class serial_fpga(object):
         count = 0
         while 1:
             if count > 5:
-                return [-1] #maybe add code to use previous value?
+                return [-1]
             data = self.ser.read(4)
             # print(data)
             if data == (b'xhat'): 
                 tmp = self.ser.read(self.d2*4)
-                # print(tmp)
+                # print("read: " + str(len(tmp)))
                 return np.array([struct.unpack(str(self.d2) + 'f', tmp)])
             elif data == (b'mmcb'): #gross error handling, might have fixed this?
                 self.ser.read(62)
-                print("R/W Error")
-            elif data == (b'rand'):
-                self.ser.read(37) #consume error
+                print('R/W error')
+            elif data == (b'rand'): #prints initialization message 
+                self.ser.read(37) #consume message
                 print("Nonblocking Pool")
+            elif data == (b'EXT4'): #memory error message, might have fixed this too
+                self.ser.read(168) #consume message
+                print("Memory Error")
             else:
                 print(data)
                 count += 1
