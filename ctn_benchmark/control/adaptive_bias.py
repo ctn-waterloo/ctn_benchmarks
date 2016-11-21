@@ -6,6 +6,8 @@ import numpy as np
 import ctn_benchmark
 import ctn_benchmark.control as ctrl
 
+from sys import path
+path.insert(0, '/home/ben/Git/abrain-board/serial_interface')
 import fpga_serial_interface
 
 class ZeroDecoder(nengo.solvers.Solver):
