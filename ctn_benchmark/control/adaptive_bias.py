@@ -7,8 +7,9 @@ import ctn_benchmark
 import ctn_benchmark.control as ctrl
 
 from sys import path
-path.insert(0, '/home/ben/Git/abrain-board/serial_interface')
+path.insert(0, 'C:\\Users\\User\\Documents\\GitHub\\abrain-board\\serial_interface')
 import fpga_serial_interface
+from timeit import default_timer as timer
 
 class ZeroDecoder(nengo.solvers.Solver):
     weights = False
@@ -36,7 +37,7 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
         self.default('delay', delay=0.01)
 
     def model(self, p):
-        fpga = fpga_serial_interface.serial_fpga("/dev/ttyUSB0", d1=p.D, d2=p.D,
+        fpga = fpga_serial_interface.serial_fpga("COM4", d1=p.D, d2=p.D,
                         n=p.n_neurons, steps=p.T/p.dt, b=400, k=p.learning_rate, dt=p.dt)
         fpga.run() #maybe move this somewhere else?
         
@@ -100,7 +101,12 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
         #start_time = time.time()
         #while time.time() - start_time < p.T:
         #    sim.run(p.dt, progress_bar=False)
+
+        start = timer() #is this a good spot to start timing?
+        #####################################################
         sim.run(p.T)
+        #####################################################
+        step_time = (timer() - start)/(p.T/p.dt) #divide my number of steps before returning
 
         data_p_q = np.array(self.system_state)
         data_p_desired = np.array(self.system_desired)
@@ -139,7 +145,7 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
         rmse = np.sqrt(np.mean(diff.flatten()**2))
 
 
-        return dict(delay=delay, rmse=rmse)
+        return dict(delay=delay, rmse=rmse, step_time=step_time)
 
 if __name__ == '__main__':
     AdaptiveBias().run()
