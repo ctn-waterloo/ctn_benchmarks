@@ -16,4 +16,4 @@ for i in range(n_trials):  # seed
             print("\nseed: " + str(i) + ";  N: " + str(n) + ";  D: " + str(d))
             ct.AdaptiveBias().run(adapt=True, noise=0, delay=0, filter=0,
                                   n_neurons=n, T=20, seed=i, D=d,
-                                  learning_rate=0.0001)
+                                  learning_rate=1, fpga=True)
