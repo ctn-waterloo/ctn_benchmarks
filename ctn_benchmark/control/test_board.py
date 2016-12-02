@@ -6,9 +6,9 @@ Iterate over adaptive_bias.py with different seeds
 '''
 import ctn_benchmark as ct
 
-N = [100, 200]#, 500, 1000, 2000, 5000, 10000] #test values
+N = [100, 200, 500, 1000, 2000, 5000, 10000]  # test values
 D = [1, 3, 6]  # input dim = output dim
-n_trials = 2  # run through all N and D with different seed
+n_trials = 50  # run through all N and D with different seed
 
 for i in range(n_trials):  # seed
     for j, n in enumerate(N):  # Number of neurons
