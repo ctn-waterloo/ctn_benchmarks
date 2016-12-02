@@ -6,12 +6,16 @@ import numpy as np
 import ctn_benchmark
 import ctn_benchmark.control as ctrl
 
+
 class ZeroDecoder(nengo.solvers.Solver):
     weights = False
+
     def __call__(self, A, Y, rng=None, E=None):
         return np.zeros((A.shape[1], Y.shape[1]), dtype=float), []
 
+
 class AdaptiveBias(ctn_benchmark.Benchmark):
+
     def params(self):
         self.default('Kp', Kp=2.0)
         self.default('Kd', Kd=1.0)
@@ -37,17 +41,18 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
         with model:
 
             system = ctrl.System(p.D, p.D, dt=p.dt, seed=p.seed,
-                    motor_noise=p.noise, sense_noise=p.noise,
-                    scale_add=p.scale_add,
-                    motor_scale=10,
-                    motor_delay=p.delay, sensor_delay=p.delay,
-                    motor_filter=p.filter, sensor_filter=p.filter)
+                                 motor_noise=p.noise, sense_noise=p.noise,
+                                 scale_add=p.scale_add,
+                                 motor_scale=10,
+                                 motor_delay=p.delay, sensor_delay=p.delay,
+                                 motor_filter=p.filter, sensor_filter=p.filter)
             self.system = system
 
             self.system_state = []
             self.system_desired = []
             self.system_t = []
             self.system_control = []
+
             def minsim_system(t, x):
                 self.system_control.append(x)
                 self.system_desired.append(signal.value(t))
@@ -68,33 +73,35 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
 
             if p.adapt:
 
-
                 adapt = nengo.Ensemble(p.n_neurons, dimensions=p.D,
                                        radius=p.radius, label='adapt')
                 nengo.Connection(minsim, adapt, synapse=None)
-                #adapt_signal = nengo.Node(None, size_in=p.D, label='adapt_signal')
-                #nengo.Connection(adapt_signal, minsim, synapse=None)
+                # adapt_signal = nengo.Node(None, size_in=p.D,
+                #                           label='adapt_signal')
+                # nengo.Connection(adapt_signal, minsim, synapse=None)
                 conn = nengo.Connection(adapt, minsim, synapse=p.synapse,
-                        function=lambda x: [0]*p.D,
-                        solver=ZeroDecoder(),
-                        learning_rule_type=nengo.PES())
-                conn.learning_rule_type.learning_rate *= p.learning_rate
+                                        function=lambda x: [0]*p.D,
+                                        solver=ZeroDecoder(),
+                                        learning_rule_type=nengo.PES(
+                                           learning_rate=1e-4*p.learning_rate))
+                # conn.learning_rule_type.learning_rate *= p.learning_rate
                 nengo.Connection(control, conn.learning_rule, synapse=None,
-                        transform=-1)
+                                 transform=-1)
 
-            signal = ctrl.Signal(p.D, p.period, dt=p.dt, max_freq=p.max_freq, seed=p.seed)
+            signal = ctrl.Signal(
+                p.D, p.period, dt=p.dt, max_freq=p.max_freq, seed=p.seed)
             desired = nengo.Node(signal.value, label='desired')
             nengo.Connection(desired, control[p.D:], synapse=None)
 
             self.p_desired = nengo.Probe(desired, synapse=None)
             # TODO: why doesn't this probe work on nengo_spinnaker?
-            #self.p_q = nengo.Probe(state_node, synapse=None)
+            # self.p_q = nengo.Probe(state_node, synapse=None)
             self.p_u = nengo.Probe(control, synapse=None)
         return model
 
     def evaluate(self, p, sim, plt):
-        #start_time = time.time()
-        #while time.time() - start_time < p.T:
+        # start_time = time.time()
+        # while time.time() - start_time < p.T:
         #    sim.run(p.dt, progress_bar=False)
         sim.run(p.T)
 
@@ -102,16 +109,16 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
         data_p_desired = np.array(self.system_desired)
         t = np.array(self.system_t)
 
-        q = data_p_q[:,0]
-        d = data_p_desired[:,0]
+        q = data_p_q[:, 0]
+        d = data_p_desired[:, 0]
 
         N = len(q) / 2
 
         # find an offset that lines up the data best (this is the delay)
         offsets = []
         for i in range(p.D):
-            q = data_p_q[:,i]
-            d = data_p_desired[:,i]
+            q = data_p_q[:, i]
+            d = data_p_desired[:, i]
             offset = ctn_benchmark.stats.find_offset(q[N:], d[N:])
             if offset == 0:
                 offset = 1
@@ -127,14 +134,11 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
 
             #plt.plot(np.correlate(d, q, 'full')[len(q):])
 
-
         diff = data_p_desired[:-offset] - data_p_q[offset:]
         diff = diff[N:]
         rmse = np.sqrt(np.mean(diff.flatten()**2))
-
 
         return dict(delay=delay, rmse=rmse)
 
 if __name__ == '__main__':
     AdaptiveBias().run()
-
