@@ -105,7 +105,7 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
         q = data_p_q[:,0]
         d = data_p_desired[:,0]
 
-        N = len(q) / 2
+        N = len(q) // 2
 
         # find an offset that lines up the data best (this is the delay)
         offsets = []
