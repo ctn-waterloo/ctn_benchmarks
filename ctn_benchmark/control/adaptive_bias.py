@@ -3,7 +3,6 @@ from timeit import default_timer as tm
 
 import nengo
 import numpy as np
-import nengo_fpga as nf
 
 import ctn_benchmark
 import ctn_benchmark.control as ctrl
@@ -92,6 +91,7 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
                 nengo.Connection(control, conn.learning_rule, synapse=None,
                                  transform=-1)
                 if p.fpga:
+                    import nengo_fpga as nf
                     adapt = nf.callout.replace_fpga(model, adapt)
 
             signal = ctrl.Signal(p.D, p.period, dt=p.dt,
