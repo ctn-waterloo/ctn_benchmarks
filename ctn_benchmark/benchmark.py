@@ -8,7 +8,7 @@ import os
 import shelve
 import time
 
-import matplotlib.pyplot
+# import matplotlib.pyplot
 import numpy as np
 
 import nengo

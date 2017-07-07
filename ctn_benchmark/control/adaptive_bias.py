@@ -1,16 +1,12 @@
 import time
+from timeit import default_timer as tm
 
 import nengo
 import numpy as np
+import nengo_fpga as nf
 
 import ctn_benchmark
 import ctn_benchmark.control as ctrl
-
-from sys import path
-path.insert(
-    0, 'C:\\Users\\User\\Documents\\GitHub\\abrain-board\\serial_interface')
-import fpga_serial_interface
-from timeit import default_timer as timer
 
 
 class ZeroDecoder(nengo.solvers.Solver):
@@ -43,11 +39,6 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
         self.default('fpga', fpga=False)
 
     def model(self, p):
-        if p.fpga:
-            fpga = fpga_serial_interface.serial_fpga(
-                "COM4", d1=p.D, d2=p.D, n=p.n_neurons, steps=p.T/p.dt,
-                b=400, k=1e-4*p.learning_rate, dt=p.dt)
-            fpga.run()  # maybe move this somewhere else?
 
         model = nengo.Network()
         with model:
@@ -84,42 +75,31 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
             nengo.Connection(control, minsim, synapse=None)
 
             if p.adapt:
-                if p.fpga:  # use FPGA for adaptive ensemble
-                    # give FPGA x, error (need to set x and err)
-                    to_fpga = nengo.Node(lambda t, x: fpga.send(x),
-                                         size_in=p.D*2, size_out=p.D*2,
-                                         label='to_fpga')
-                    nengo.Connection(minsim, to_fpga[:p.D], synapse=None)  # x
-                    nengo.Connection(
-                        control, to_fpga[p.D:], synapse=None)  # err
 
-                    # get x_hat
-                    from_fpga = nengo.Node(
-                        lambda t: fpga.recv(), size_out=p.D, label='from_fpga')
-                    nengo.Connection(from_fpga, minsim, synapse=p.synapse)
-                else:  # us Nengo for adaptive ensemble
-                    adapt = nengo.Ensemble(p.n_neurons, dimensions=p.D,
-                                           radius=p.radius, label='adapt')
-                    nengo.Connection(minsim, adapt, synapse=None)
-                    # adapt_signal = nengo.Node(None, size_in=p.D,
-                    #                           label='adapt_signal')
-                    # nengo.Connection(adapt_signal, minsim, synapse=None)
-                    conn = nengo.Connection(
-                        adapt, minsim, synapse=p.synapse,
-                        function=lambda x: [0]*p.D, solver=ZeroDecoder(),
-                        learning_rule_type=nengo.PES(
-                                        learning_rate=1e-4*p.learning_rate))
-                    # conn.learning_rule_type.learning_rate *= p.learning_rate
-                    nengo.Connection(control, conn.learning_rule, synapse=None,
-                                     transform=-1)
+                adapt = nengo.Ensemble(p.n_neurons, dimensions=p.D,
+                                       radius=p.radius, label='adapt')
+                nengo.Connection(minsim, adapt, synapse=None)
+                # adapt_signal = nengo.Node(None, size_in=p.D,
+                #                           label='adapt_signal')
+                # nengo.Connection(adapt_signal, minsim, synapse=None)
+                rate = 1e-4*p.learning_rate  # default*scaling factor
+                conn = nengo.Connection(adapt, minsim, synapse=p.synapse,
+                                        function=lambda x: [0]*p.D,
+                                        solver=ZeroDecoder(),
+                                        learning_rule_type=nengo.PES(rate))
+                # conn.learning_rule_type.learning_rate *= p.learning_rate
+                # //this is read only now
+                nengo.Connection(control, conn.learning_rule, synapse=None,
+                                 transform=-1)
+                if p.fpga:
+                    adapt = nf.callout.replace_fpga(model, adapt)
 
-            signal = ctrl.Signal(
-                p.D, p.period, dt=p.dt, max_freq=p.max_freq, seed=p.seed)
+            signal = ctrl.Signal(p.D, p.period, dt=p.dt,
+                                 max_freq=p.max_freq, seed=p.seed)
             desired = nengo.Node(signal.value, label='desired')
             nengo.Connection(desired, control[p.D:], synapse=None)
 
             self.p_desired = nengo.Probe(desired, synapse=None)
-            # self.p_neurons = nengo.Probe(from_fpga, synapse=None)
             # TODO: why doesn't this probe work on nengo_spinnaker?
             # self.p_q = nengo.Probe(state_node, synapse=None)
             self.p_u = nengo.Probe(control, synapse=None)
@@ -129,13 +109,10 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
         # start_time = time.time()
         # while time.time() - start_time < p.T:
         #    sim.run(p.dt, progress_bar=False)
-
-        start = timer()  # is this a good spot to start timing?
-        #####################################################
-        sim.run(p.T)
-        #####################################################
-        # divide my number of steps before returning
-        step_time = (timer() - start)/(p.T/p.dt)
+        start = tm()
+        sim.run(p.T, progress_bar=False)
+        end = tm()
+        step_time = (end - start)/(p.T/p.dt)  # total sim time / num steps
 
         data_p_q = np.array(self.system_state)
         data_p_desired = np.array(self.system_desired)
@@ -144,7 +121,7 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
         q = data_p_q[:, 0]
         d = data_p_desired[:, 0]
 
-        N = len(q) / 2
+        N = len(q) // 2
 
         # find an offset that lines up the data best (this is the delay)
         offsets = []
@@ -162,10 +139,6 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
             plt.plot(t[offset:], d[:-offset], label='$q_d$')
             # plt.plot(t[offset:], d[offset:])
             plt.plot(t[offset:], q[offset:], label='$q$')
-            # plt.plot(t[offset:], np.array(self.system_control)[offset:,0],
-            #          label='$control$')
-            # plt.plot(t[offset:], sim.data[self.p_neurons][offset:,0],
-            #          label='$neurons$')
             plt.legend(loc='upper left')
 
             # plt.plot(np.correlate(d, q, 'full')[len(q):])
