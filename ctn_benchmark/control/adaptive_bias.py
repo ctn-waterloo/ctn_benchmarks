@@ -91,8 +91,8 @@ class AdaptiveBias(ctn_benchmark.Benchmark):
                 nengo.Connection(control, conn.learning_rule, synapse=None,
                                  transform=-1)
                 if p.fpga:
-                    import nengo_fpga as nf
-                    adapt = nf.callout.replace_fpga(model, adapt)
+                    import nengo_board as nb
+                    adapt = nb.callout.replace_fpga(model, adapt)
 
             signal = ctrl.Signal(p.D, p.period, dt=p.dt,
                                  max_freq=p.max_freq, seed=p.seed)
